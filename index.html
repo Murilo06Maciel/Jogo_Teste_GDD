@@ -1,0 +1,1999 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AROER: O Príncipe Exilado</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=EB+Garamond:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#040303;overflow:hidden;color:#e8dcc0;font-family:'Cinzel',Georgia,serif}
+body{display:grid;place-items:center}
+#wrap{position:relative;width:min(100vw,160vh);aspect-ratio:8/5;container-type:inline-size;background:#000;box-shadow:0 0 60px #000}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:default}
+#hud>*,#dlg,#hint{position:absolute}
+#vitals{left:2cqw;bottom:2cqw;width:26cqw}
+.who{font-size:1.4cqw;letter-spacing:.08em;color:#c8a15a;margin-bottom:.6cqw}
+.bar{position:relative;background:#0b0807;border:1px solid #6b5430;box-shadow:inset 0 0 6px #000}
+.bar i{display:block;height:100%;width:100%;transition:width .08s}
+.hp{height:1.9cqw}.hp i{background:linear-gradient(#c93d3d,#7d1b1f)}
+.hp span{position:absolute;inset:0;text-align:center;font-size:1.1cqw;line-height:1.9cqw;text-shadow:0 0 3px #000}
+.st{height:1cqw;margin-top:.5cqw}.st i{background:linear-gradient(#9dbd76,#4c7a47)}
+#skills{right:2cqw;bottom:2cqw;display:flex;gap:.8cqw}
+.sk{position:relative;width:6cqw;height:6.2cqw;background:linear-gradient(#17120f,#0d0a09);border:1px solid #6b5430;outline:1px solid #2b2217;outline-offset:2px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+.sk svg{width:2.6cqw;height:2.6cqw;stroke:#c8a15a;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sk b{font-size:1.05cqw;color:#e8dcc0;font-weight:500}
+.sk small{font-size:.8cqw;color:#9a8a6c;font-family:'EB Garamond',Georgia,serif}
+.sk u{position:absolute;inset:0;background:rgba(0,0,0,.68);transform-origin:bottom;transform:scaleY(var(--c,0))}
+.sk.on{border-color:#ffd98a;box-shadow:0 0 14px #c8a15a99}
+#hint{left:50%;bottom:.9cqw;transform:translateX(-50%);width:40cqw;text-align:center;font:italic .95cqw 'EB Garamond',Georgia,serif;color:#76694f}
+#dlg{display:none;left:50%;bottom:11.5cqw;transform:translateX(-50%);width:62cqw;padding:1.4cqw 2cqw 1.6cqw;background:linear-gradient(#171210f2,#0c0908f2);border:1px solid #8a6d3b;box-shadow:0 0 0 3px #0c0908,0 0 0 4px #4a3a20,0 8px 30px #000}
+#dlg.on{display:block}
+#dn{font-size:1.3cqw;letter-spacing:.12em;color:#c8a15a;margin-bottom:.6cqw}
+#dt{font:italic 1.8cqw/1.5 'EB Garamond',Georgia,serif;min-height:2.7cqw}
+#dh{position:absolute;right:1.4cqw;bottom:.5cqw;font-size:.9cqw;color:#76694f}
+
+/* ===== MENU / MODAIS / PAUSA ===== */
+#wrap.inmenu #hud,#wrap.inmenu #hint,#wrap.inmenu #dlg{display:none!important}
+#wrap:not(.inmenu) #mc{display:none}
+#mc{z-index:5}
+.scr{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;animation:appear .5s ease both}
+.scr.on{display:flex}
+@keyframes appear{from{opacity:0}to{opacity:1}}
+#menu{z-index:6}
+#pause{z-index:8;background:rgba(0,0,0,.62)}
+#modal{z-index:9;background:rgba(0,0,0,.72)}
+#fade{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .6s ease;z-index:50}
+#fade.on{opacity:1;pointer-events:auto}
+#menu h1{margin:0;font:700 12cqw/1 'Cinzel',Georgia,serif;letter-spacing:.14em;padding-left:.14em;background:linear-gradient(#f3e2b3,#c8a15a 55%,#6e5224);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 1.4cqw rgba(200,120,40,.4)) drop-shadow(0 .4cqw .3cqw #000);}
+#menu h2{margin:.6cqw 0 4cqw;font:italic 2.2cqw 'EB Garamond',Georgia,serif;letter-spacing:.38em;padding-left:.38em;color:#b9a47a;text-shadow:0 2px 6px #000}
+#menu nav,#pause nav{display:flex;flex-direction:column;align-items:center}
+#mfoot{position:absolute;bottom:1.4cqw;font:italic 1cqw 'EB Garamond',Georgia,serif;color:#6f6352}
+.scr button{position:relative;display:block;width:36cqw;margin:.7cqw 0;padding:1.1cqw 2.6cqw;font:600 1.4cqw 'Cinzel',Georgia,serif;letter-spacing:.1em;text-transform:uppercase;color:#e8dcc0;background:linear-gradient(#1a1411d9,#0b0807d9);border:1px solid #8a6d3b;box-shadow:inset 0 0 0 3px #0b0807,inset 0 0 0 4px #3f3119,0 4px 16px #000;cursor:pointer;transition:color .18s,border-color .18s,box-shadow .18s,transform .18s}
+.scr button::before,.scr button::after{position:absolute;top:50%;transform:translateY(-50%);color:#6b5430;transition:color .18s}
+.scr button::before{content:'[';left:1.1cqw}.scr button::after{content:']';right:1.1cqw}
+.scr button:hover,.scr button:focus-visible{outline:none;color:#fff3d0;border-color:#ffd98a;transform:translateY(-1px);box-shadow:inset 0 0 0 3px #0b0807,inset 0 0 0 4px #6b5430,0 0 2.2cqw #c8a15a66,0 4px 16px #000}
+.scr button:hover::before,.scr button:hover::after,.scr button:focus-visible::before,.scr button:focus-visible::after{color:#ffd98a}
+#bPlay{color:#f3e2b3}
+.panel{width:56cqw;max-height:86%;overflow:auto;padding:2.2cqw 3cqw 2cqw;background:linear-gradient(#171210f5,#0c0908f5);border:1px solid #8a6d3b;box-shadow:0 0 0 3px #0c0908,0 0 0 4px #4a3a20,0 10px 40px #000;text-align:center}
+#pause .panel{width:42cqw}
+.panel h3{margin:0 0 1.4cqw;font:700 2.3cqw 'Cinzel',Georgia,serif;letter-spacing:.14em;color:#c8a15a;text-transform:uppercase}
+#mB{font:1.6cqw/1.65 'EB Garamond',Georgia,serif;text-align:left;margin:0 0 1.6cqw}
+#mB p{margin:0 0 1cqw}
+.row{display:grid;grid-template-columns:15cqw 1fr;gap:1.4cqw;align-items:center;margin:.7cqw 0}
+.kc{border:1px solid #6b5430;background:#0b0807;padding:.45cqw .6cqw;color:#c8a15a;font:600 1.15cqw 'Cinzel',Georgia,serif;text-align:center;box-shadow:inset 0 0 6px #000}
+.panel button{width:auto;min-width:18cqw;margin:.6cqw auto 0}
+#pause .panel button{width:34cqw}
+
+/* ===== CUTSCENE / TUTORIAL ===== */
+#wrap.cut #hud,#wrap.cut #hint,#wrap.cut #dlg{display:none!important}
+#cut{z-index:6;justify-content:flex-end;padding-bottom:3.4cqw}
+#cbox{position:relative;width:56cqw;min-height:11.5cqw;padding:1.9cqw 3cqw 1.6cqw;color:#2b1d10;background:radial-gradient(ellipse at 50% 30%,#e6d5a8,#c3ac7a 85%,#9c845a);border:1px solid #5a4126;box-shadow:inset 0 0 2.5cqw #7a5b30aa,0 0 0 3px #1b130b,0 0 0 4px #8a6d3b,0 1cqw 3cqw #000;cursor:pointer}
+#cpage{position:absolute;top:-1.5cqw;left:2cqw;background:#1b130b;border:1px solid #8a6d3b;color:#c8a15a;font:600 1cqw 'Cinzel',Georgia,serif;letter-spacing:.2em;padding:.3cqw 1cqw;text-transform:uppercase}
+#ct{font:italic 1.85cqw/1.55 'EB Garamond',Georgia,serif;min-height:8.6cqw}
+#cn{position:absolute;right:1.4cqw;bottom:.6cqw;font-size:1.3cqw;color:#5a4126;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.2}}
+#bSkip{position:absolute;right:2cqw;bottom:2.2cqw;width:auto;margin:0;padding:.8cqw 2.2cqw;font-size:1cqw}
+#obj{position:absolute;left:2cqw;top:9cqw;width:29cqw;display:none;z-index:3;padding:1cqw 1.4cqw 1.1cqw;background:linear-gradient(#171210ee,#0c0908ee);border:1px solid #8a6d3b;box-shadow:0 0 0 2px #0c0908,0 0 0 3px #4a3a20,0 4px 16px #000}
+#obj.on{display:block}
+#ol{font-size:.95cqw;letter-spacing:.2em;color:#c8a15a;text-transform:uppercase}
+#ot{font:italic 1.5cqw/1.4 'EB Garamond',Georgia,serif;margin-top:.4cqw}
+.ob{height:.7cqw;background:#0b0807;border:1px solid #6b5430;margin-top:.7cqw}
+.ob i{display:block;height:100%;width:0;background:linear-gradient(#e6c373,#a37d36);transition:width .15s}
+#card{position:absolute;inset:0;display:grid;place-items:center;z-index:51;pointer-events:none;opacity:0;transition:opacity .8s;font:italic 3.2cqw 'EB Garamond',Georgia,serif;letter-spacing:.32em;color:#c8a15a;text-shadow:0 0 1.5cqw #000}
+#card.on{opacity:1}
+
+#prompt{position:absolute;left:50%;bottom:9.4cqw;transform:translateX(-50%);display:none;padding:.5cqw 1.6cqw;font:600 1.3cqw 'Cinzel',Georgia,serif;letter-spacing:.08em;color:#f3e2b3;background:#120e0cdd;border:1px solid #8a6d3b;z-index:3;pointer-events:none;white-space:nowrap}
+#wrap.inmenu #prompt,#wrap.cut #prompt{display:none!important}
+#bonus{font:italic 1.1cqw 'EB Garamond',Georgia,serif;color:#c8a15a;margin-top:.5cqw;min-height:1.4cqw}
+#clock{right:2cqw;top:2cqw;padding:.4cqw 1.1cqw;font:600 1.25cqw 'Cinzel',Georgia,serif;letter-spacing:.1em;color:#e8dcc0;background:#120e0cdd;border:1px solid #6b5430;box-shadow:0 0 0 2px #0c0908}
+
+.scr button:disabled{opacity:.4;cursor:not-allowed;transform:none;color:#8a7e66;border-color:#4a3a20;box-shadow:inset 0 0 0 3px #0b0807,0 4px 16px #000}
+#wrap.scn #hud,#wrap.scn #hint,#wrap.scn #prompt,#wrap.scn #obj{display:none!important}
+#toast{position:absolute;left:50%;top:8cqw;transform:translateX(-50%);padding:.5cqw 1.8cqw;font:italic 1.5cqw 'EB Garamond',Georgia,serif;color:#e8dcc0;background:#120e0cee;border:1px solid #8a6d3b;opacity:0;transition:opacity .5s;z-index:20;pointer-events:none}
+#toast.on{opacity:1}
+#name{z-index:10;background:rgba(0,0,0,.78)}
+#nameIn{width:30cqw;margin:1cqw 0 .6cqw;padding:.8cqw 1.2cqw;font:600 2cqw 'Cinzel',Georgia,serif;text-align:center;color:#f3e2b3;background:#0b0807;border:1px solid #8a6d3b;outline:none;box-shadow:inset 0 0 8px #000}
+#nameIn:focus{border-color:#ffd98a}
+#name p{font:italic 1.5cqw 'EB Garamond',Georgia,serif;margin:0 0 .6cqw;color:#c8bca0}
+
+.sk{width:5.3cqw!important;height:5.7cqw!important}
+.sk b{font-size:.85cqw!important}.sk small{font-size:.66cqw!important;text-align:center;line-height:1.1}.sk svg{width:2cqw!important;height:2cqw!important}
+#skills{gap:.5cqw!important;right:1.2cqw!important}
+#trophies{left:2cqw;top:2cqw;white-space:pre;display:none;padding:.6cqw 1.2cqw;font:italic 1.15cqw/1.5 'EB Garamond',Georgia,serif;color:#e8dcc0;background:#120e0cdd;border:1px solid #6b5430}
+#track{left:2cqw;top:9.5cqw;max-width:34cqw;font:italic 1.2cqw/1.4 'EB Garamond',Georgia,serif;color:#f3e2b3;text-shadow:0 1px 4px #000}
+#journal{z-index:9;background:rgba(0,0,0,.78)}
+#journal .panel{width:70cqw;text-align:left}
+#jb{max-height:42cqw;overflow:auto;font:1.35cqw/1.45 'EB Garamond',Georgia,serif}
+#jb .qi{margin:0 0 1cqw;padding:.6cqw 1cqw;border-left:3px solid #6b5430}
+#jb .qi b{color:#c8a15a;font-family:'Cinzel',Georgia,serif;font-size:1.15cqw}
+#jb .qi.act{border-color:#ffd98a}#jb .qi.done{opacity:.6;border-color:#4c7a47}
+#choice{z-index:10;background:rgba(0,0,0,.78)}
+#choice .panel{width:50cqw}
+</style>
+</head>
+<body>
+<div id="wrap" class="inmenu">
+  <canvas id="c" width="960" height="600"></canvas>
+  <div id="hud">
+    <div id="vitals">
+      <div class="who" id="who">Príncipe de Aroer</div>
+      <div class="bar hp"><i id="hp"></i><span id="hpt"></span></div>
+      <div class="bar st"><i id="st"></i></div>
+      <div id="bonus"></div>
+    </div>
+    <div id="skills">
+      <div class="sk" id="s-lmb"><svg viewBox="0 0 24 24"><path d="M5 19L18 6M16 4h4v4M5 19l-2 2M7 15l2 2"/></svg><b>LMB</b><small>Ataque leve</small><u></u></div>
+      <div class="sk" id="s-rmb"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/></svg><b>RMB</b><small>Defesa</small><u></u></div>
+      <div class="sk" id="s-shift"><svg viewBox="0 0 24 24"><path d="M4 20L19 5M14 3h7v7M3 14l7 7M8 8a9 9 0 0 1 8 8"/></svg><b>L-SHIFT</b><small>Ataque pesado</small><u></u></div>
+      <div class="sk" id="s-dash"><svg viewBox="0 0 24 24"><path d="M4 6l6 6-6 6M12 6l6 6-6 6"/></svg><b>SPACE</b><small>Dash / esquiva</small><u></u></div>
+      <div class="sk" id="s-save"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6"/></svg><b>P</b><small>Salvar jogo</small><u></u></div>
+      <div class="sk" id="s-talk"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H10l-4 4v-4H4z"/></svg><b>SPACE</b><small>Conversar / avançar</small><u></u></div>
+      <div class="sk" id="s-venda" style="display:none"><svg viewBox="0 0 24 24"><path d="M3 12s4-6 9-6 9 6 9 6-4 6-9 6-9-6-9-6zM4 20L20 4"/></svg><b>V</b><small>Venda</small><u></u></div>
+      <div class="sk" id="s-diario" style="display:none"><svg viewBox="0 0 24 24"><path d="M5 4h12a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2zM9 4v16"/></svg><b>J</b><small>Diário</small><u></u></div>
+    </div>
+    <div id="trophies"></div>
+    <div id="track"></div>
+    <div id="clock"></div>
+  </div>
+  <div id="hint">WASD move e define a direção · Espaço conversa e avança o diálogo (esquiva em combate) · Botão esquerdo golpe · Botão direito guarda · SHIFT esquerdo golpe pesado · P salva · V venda · J diário · Esc pausa</div>
+  <div id="dlg"><div id="dn"></div><div id="dt"></div><div id="dh">Espaço ▸</div></div>
+  <canvas id="mc" width="960" height="600"></canvas>
+  <div id="menu" class="scr on">
+    <h1>AROER</h1>
+    <h2>O Príncipe Exilado</h2>
+    <nav>
+      <button id="bPlay">Novo Jogo</button>
+      <button id="bLoad">Carregar Jogo</button>
+      <button id="bCtl">Controles</button>
+      <button id="bAbout">Sobre</button>
+    </nav>
+    <div id="mfoot">Protótipo jogável · O Castelo de Aroer</div>
+  </div>
+  <div id="modal" class="scr"><div class="panel"><h3 id="mT"></h3><div id="mB"></div><button id="mClose">Fechar</button></div></div>
+  <div id="pause" class="scr"><div class="panel"><h3>Pausado</h3><nav><button id="bRes">Continuar</button><button id="bMenu">Voltar ao Menu Principal</button></nav></div></div>
+  <div id="cut" class="scr">
+    <div id="cbox"><div id="cpage"></div><div id="ct"></div><div id="cn">▸</div></div>
+    <button id="bSkip">Pular Cutscene</button>
+  </div>
+  <div id="obj"><div id="ol">Lição do Capitão</div><div id="ot"></div><div class="ob"><i id="op"></i></div></div>
+  <div id="name" class="scr"><div class="panel"><h3>Qual é o seu nome?</h3><p>Anos se passaram. Como o sobrevivente de Aroer se chama agora?</p><input id="nameIn" maxlength="14" autocomplete="off" spellcheck="false"><button id="nameOk">Confirmar</button></div></div>
+  <div id="journal" class="scr"><div class="panel"><h3>Diário de Missões</h3><div id="jb"></div><button id="jClose">Fechar (J)</button></div></div>
+  <div id="choice" class="scr"><div class="panel"><h3 id="chT"></h3><div id="chB"></div></div></div>
+  <div id="toast"></div>
+  <div id="prompt"></div>
+  <div id="card"></div>
+  <div id="fade" class="on"></div>
+</div>
+
+<script>
+'use strict';
+/* ============ CONFIG & UTIL ============ */
+const W=960,H=600,A={x1:80,y1:120,x2:880,y2:520,inset:46};
+const $=id=>document.getElementById(id);
+const cv=$('c'),ctx=cv.getContext('2d');
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const lerp=(a,b,t)=>a+(b-a)*t;
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+const angDiff=(a,b)=>{let d=(a-b)%(Math.PI*2);if(d>Math.PI)d-=Math.PI*2;if(d<-Math.PI)d+=Math.PI*2;return d};
+function bounds(e){
+  e.y=clamp(e.y,A.y1+e.r,A.y2-e.r);
+  if(Game.room==='garden'&&Math.abs(e.x-W/2)<82&&e.y<A.y1+44)e.y=A.y1+44; // fonte do jardim
+  const t=clamp((e.y-A.y1)/(A.y2-A.y1),0,1),ins=A.inset*(1-t);
+  e.x=clamp(e.x,A.x1+ins+e.r,A.x2-ins-e.r);
+}
+
+/* ============ INPUT ============ */
+const Input={
+  keys:{},pressed:{},mouse:{x:W/2,y:H/2},moved:false,
+  init(){
+    addEventListener('keydown',e=>{
+      if(e.target&&e.target.tagName==='INPUT')return;
+      const k=e.key.toLowerCase();
+      if(e.code==='ShiftLeft'){this.keys.lshift=true;if(!e.repeat)this.pressed.lshift=true}
+      if(k===' ')e.preventDefault();
+      if(!e.repeat)this.pressed[k]=true;
+      this.keys[k]=true;
+    });
+    addEventListener('keyup',e=>{this.keys[e.key.toLowerCase()]=false;if(e.code==='ShiftLeft')this.keys.lshift=false});
+    cv.addEventListener('mousemove',e=>this.pos(e));
+    cv.addEventListener('mousedown',e=>{this.pos(e);this.keys['m'+e.button]=true;this.pressed['m'+e.button]=true});
+    addEventListener('mouseup',e=>{this.keys['m'+e.button]=false});
+    cv.addEventListener('contextmenu',e=>e.preventDefault());
+    $('dlg').addEventListener('mousedown',()=>{this.pressed['m0']=true});
+    addEventListener('blur',()=>{this.keys={}});
+  },
+  pos(e){const r=cv.getBoundingClientRect();this.mouse.x=(e.clientX-r.left)*W/r.width;this.mouse.y=(e.clientY-r.top)*H/r.height;this.moved=true},
+  down(...k){return k.some(x=>this.keys[x])},
+  hit(...k){return k.some(x=>this.pressed[x])},
+  flush(){this.pressed={}}
+};
+
+/* ============ PARTÍCULAS ============ */
+class Particle{
+  constructor(x,y,vx,vy,life,color,size,g=0){Object.assign(this,{x,y,vx,vy,life,max:life,color,size,g})}
+  update(dt){this.life-=dt;this.vy+=this.g*dt;this.x+=this.vx*dt;this.y+=this.vy*dt;this.vx*=.98}
+  draw(c){const a=Math.max(0,this.life/this.max);c.globalAlpha=a;c.fillStyle=this.color;c.beginPath();c.arc(this.x,this.y,this.size*(.4+.6*a),0,7);c.fill();c.globalAlpha=1}
+}
+const parts=[];
+function burst(x,y,color,n,sp,life,size,g=0){
+  for(let i=0;i<n;i++){const a=rnd(0,6.283),s=rnd(sp*.3,sp);parts.push(new Particle(x,y,Math.cos(a)*s,Math.sin(a)*s,rnd(life*.5,life),color,rnd(size*.5,size),g))}
+}
+
+/* ============ DIÁLOGO ============ */
+const Dlg={
+  q:[],full:'',n:0,block:true,cb:null,wait:0,on:false,
+  say(lines,block=true,cb=null){const nm=Game.playerName||'Alteza';this.q=lines.map(l=>({n:l.n.replace(/\{n\}/g,nm),t:l.t.replace(/\{n\}/g,nm)}));this.block=block;this.cb=cb;this.on=true;$('dlg').classList.add('on');$('dh').style.display=block?'':'none';this.next()},
+  next(){if(!this.q.length){this.close();return}const l=this.q.shift();this.full=l.t;$('dn').textContent=l.n;this.n=0;this.wait=0;$('dt').textContent=''},
+  close(){this.on=false;$('dlg').classList.remove('on');const c=this.cb;this.cb=null;this.q=[];if(c)c()},
+  update(dt){
+    if(!this.on)return;
+    if(this.n<this.full.length){this.n=Math.min(this.full.length,this.n+dt*150);$('dt').textContent=this.full.slice(0,this.n|0)}
+    else if(!this.block){this.wait+=dt;if(this.wait>2.4)this.next()}
+    if(this.block&&Input.hit(' ')){this.next();Input.flush()}
+  }
+};
+
+/* ============ JOGADOR ============ */
+const ATK={
+  light:{cost:6,w:.07,a:.11,r:.16,range:70,arc:1.9,dmg:9,post:11,step:190},
+  heavy:{cost:28,w:.34,a:.14,r:.36,range:92,arc:2.5,dmg:26,post:34,step:130}
+};
+class Player{
+  constructor(){this.reset()}
+  reset(){Object.assign(this,{x:W/2,y:430,r:13,hp:100,maxHp:100,st:100,maxSt:100,stDelay:0,face:-Math.PI/2,walkT:0,moving:false,
+    atk:null,dashT:0,dashCd:0,iT:0,dx:0,dy:0,kx:0,ky:0,block:false,blockT:9,stun:0,hurt:0,flash:0,dead:false,trail:[]})}
+  update(dt,boss){
+    if(this.dead)return;
+    const I=Input;
+    this.dashCd=Math.max(0,this.dashCd-dt);this.iT=Math.max(0,this.iT-dt);
+    this.stun=Math.max(0,this.stun-dt);this.hurt=Math.max(0,this.hurt-dt);this.flash=Math.max(0,this.flash-dt);
+    let mx=(I.down('d')?1:0)-(I.down('a')?1:0),my=(I.down('s')?1:0)-(I.down('w')?1:0);
+    const ml=Math.hypot(mx,my);if(ml){mx/=ml;my/=ml}
+    this.moving=ml>0;
+    if(ml&&this.dashT<=0&&!this.atk)this.face=Math.atan2(my,mx); // direção = última direção de movimento (WASD), nunca o mouse
+    // guarda
+    const wantBlock=I.down('m2')&&Game.combat&&!this.atk&&this.dashT<=0&&this.stun<=0&&this.hurt<=0&&this.st>0;
+    if(wantBlock&&!this.block)this.blockT=0;
+    this.block=wantBlock;if(this.block)this.blockT+=dt;
+    // esquiva
+    if(I.hit(' ')&&Game.combat&&this.dashCd<=0&&this.st>=20&&this.dashT<=0&&this.stun<=0){
+      this.dx=ml?mx:Math.cos(this.face);this.dy=ml?my:Math.sin(this.face);
+      this.dashT=.18;this.iT=.26;Game.ev('dash');this.dashCd=.7;this.st-=20;this.stDelay=.6;this.atk=null;this.block=false;
+      burst(this.x,this.y-8,'#9d8f78',10,140,.45,4);
+    }
+    // ataque
+    if(Game.combat&&!this.atk&&this.dashT<=0&&this.stun<=0&&this.hurt<=0){
+      let t=null;if(I.hit('m0'))t='light';else if(I.hit('lshift'))t='heavy';
+      if(t&&this.st>=ATK[t].cost){const d=ATK[t];this.st-=d.cost;this.stDelay=.7;this.block=false;this.atk={t:0,d,type:t,hit:false,ang:this.face};Game.ev(t)}
+    }
+    // movimento
+    let vx=0,vy=0;
+    if(this.dashT>0){this.dashT-=dt;vx=this.dx*760;vy=this.dy*760;this.trail.push({x:this.x,y:this.y,a:.5})}
+    else if(this.atk){
+      const k=this.atk,d=k.d;k.t+=dt;
+      if(k.t<d.w){k.ang=this.face;vx=mx*50;vy=my*50}
+      else if(k.t<d.w+d.a){vx=Math.cos(k.ang)*d.step;vy=Math.sin(k.ang)*d.step;if(!k.hit)this.strike(boss)}
+      if(k.t>=d.w+d.a+d.r)this.atk=null;
+    }
+    else if(this.stun>0||this.hurt>0){vx=this.kx;vy=this.ky;this.kx*=.9;this.ky*=.9}
+    else{const s=this.block?120:270;vx=mx*s;vy=my*s}
+    this.x+=vx*dt;this.y+=vy*dt;bounds(this);
+    if(this.moving&&!this.atk)this.walkT+=dt;
+    // estamina
+    if(this.block){this.st=Math.max(0,this.st-9*dt);this.stDelay=.5}
+    else if(!this.atk&&this.dashT<=0){this.stDelay-=dt;if(this.stDelay<=0)this.st=Math.min(this.maxSt,this.st+28*dt)}
+    this.trail.forEach(t=>t.a-=dt*2.5);this.trail=this.trail.filter(t=>t.a>0);
+  }
+  strike(b){
+    const k=this.atk,d=k.d;if(b.dead||b.immune)return;
+    const dx=b.x-this.x,dy=b.y-this.y,dist=Math.hypot(dx,dy);
+    if(dist<=d.range+b.r&&Math.abs(angDiff(Math.atan2(dy,dx),k.ang))<=d.arc/2){
+      k.hit=true;b.takeHit(d.dmg+Game.dmgBonus,d.post,k.ang);
+      const h=k.type==='heavy';Game.hitstop=h?.12:.06;Game.shake=h?9:4;
+      burst(b.x,b.y-24,'#e8dcc0',10,230,.4,3);burst(b.x,b.y-24,'#a3262a',9,170,.55,3,320);
+    }
+  }
+  takeDamage(dmg,sx,sy,boss){
+    if(this.iT>0||this.dead)return;
+    const a=Math.atan2(sy-this.y,sx-this.x);
+    if(this.block&&Math.abs(angDiff(a,this.face))<1.3){
+      Game.ev('block');
+      if(this.blockT<.18){ // aparar
+        boss.parried();Game.hitstop=.15;Game.shake=7;this.iT=.3;this.st=Math.min(this.maxSt,this.st+15);
+        burst(this.x+Math.cos(a)*16,this.y-24,'#ffd98a',20,320,.5,3);Game.flashMsg('APARADO');return;
+      }
+      this.st-=18;this.stDelay=.9;this.hp-=dmg*.2;Game.shake=4;
+      this.x-=Math.cos(a)*10;this.y-=Math.sin(a)*10;bounds(this);
+      burst(this.x+Math.cos(a)*16,this.y-24,'#b8bcc2',10,200,.35,2);
+      if(this.st<=0){this.st=0;this.block=false;this.stun=.8;Game.flashMsg('GUARDA QUEBRADA')}
+      this.checkDeath();return;
+    }
+    this.hp-=dmg;this.hurt=.28;this.atk=null;this.dashT=0;this.flash=.2;
+    this.kx=-Math.cos(a)*260;this.ky=-Math.sin(a)*260;Game.shake=10;Game.hitstop=.08;
+    burst(this.x,this.y-24,'#a3262a',14,220,.6,3,340);this.checkDeath();
+  }
+  checkDeath(){if(this.hp<=0){this.hp=0;this.dead=true;this.atk=null;Game.lose()}}
+  weapon(){
+    const k=this.atk;
+    if(this.block)return{a:this.face-1.35,ext:-6};
+    if(!k)return{a:this.face+.9,ext:-8};
+    const d=k.d,t=k.t,h=k.type==='heavy';
+    if(t<d.w){const p=ease(t/d.w);return{a:lerp(this.face+.9,k.ang-d.arc/2-(h?.5:0),p),ext:h?-8:0,glow:h?p*.55:0}}
+    if(t<d.w+d.a){const p=(t-d.w)/d.a;return{a:k.ang-d.arc/2+d.arc*p,ext:6}}
+    return{a:k.ang+d.arc/2,ext:0};
+  }
+}
+
+/* ============ BOSS — MESTRE QUÍRON ============ */
+const BATK={
+  swing:{tele:.45,act:.16,rec:.55,range:88,arc:2.2,dmg:14},
+  thrust:{tele:.42,act:.14,rec:.45,range:120,arc:.6,dmg:18,move:540},
+  lunge:{tele:.55,act:.34,rec:.6,range:0,arc:0,dmg:16,move:700},
+  gaze:{tele:.9,act:.25,rec:.8,range:380,arc:1.0,dmg:10,petrify:true},
+  charge:{tele:.8,act:.7,rec:.8,range:0,arc:0,dmg:22,move:620}
+};
+class Boss{
+  constructor(){this.reset()}
+  reset(){Object.assign(this,{x:W/2,y:210,r:17,hp:320,maxHp:320,ghost:320,post:0,postT:0,state:'move',t:0,cd:1.4,face:Math.PI/2,walkT:0,
+    moving:false,strafe:1,strafeT:2,atk:null,stunT:0,flash:0,dead:false,phase:1,ang:0,recDur:0})}
+  get spd(){return this.phase===2?1.25:1}
+  get m(){return this.phase===2?.8:1}
+  update(dt,p){
+    this.ghost+=(this.hp-this.ghost)*Math.min(1,dt*2.5);
+    if(this.dead)return;
+    this.flash=Math.max(0,this.flash-dt);
+    const dx=p.x-this.x,dy=p.y-this.y,d=Math.hypot(dx,dy)||1,a=Math.atan2(dy,dx);
+    this.moving=false;
+    if(this.state!=='stun'){if(this.postT>0)this.postT-=dt;else this.post=Math.max(0,this.post-20*dt)}
+    if(this.state==='move'){
+      this.face=a;this.cd-=dt;this.strafeT-=dt;
+      if(this.strafeT<=0){this.strafe*=-1;this.strafeT=rnd(1.2,2.6)}
+      const s=this.spd;let vx,vy;
+      if(d>200){vx=dx/d*215*s;vy=dy/d*215*s}
+      else if(d<120){vx=-dx/d*185*s;vy=-dy/d*185*s}
+      else{vx=-dy/d*this.strafe*165*s;vy=dx/d*this.strafe*165*s}
+      this.x+=vx*dt;this.y+=vy*dt;this.moving=true;this.walkT+=dt;
+      if(this.cd<=0&&!p.dead)this.begin(this.pick(d));
+    }else if(this.state==='stun'){
+      this.stunT-=dt;if(this.stunT<=0){this.state='move';this.post=0;this.cd=.8}
+    }else this.runAtk(dt,p,a,d);
+    bounds(this);
+  }
+  pick(d){return d<135?(Math.random()<.55?'swing':'thrust'):(d>220||Math.random()<.5?'lunge':'thrust')}
+  begin(type){this.atk={type,d:BATK[type],hit:false};this.state='tele';this.t=0;this.ang=this.face;this.recDur=0}
+  runAtk(dt,p,a,d){
+    const k=this.atk,D=k.d;this.t+=dt;
+    if(this.state==='tele'){
+      if(this.t<D.tele*this.m*.7){this.face=a;this.ang=a}
+      if(this.t>=D.tele*this.m){this.state='act';this.t=0}
+    }else if(this.state==='act'){
+      if(D.move){this.x+=Math.cos(this.ang)*D.move*this.spd*dt;this.y+=Math.sin(this.ang)*D.move*this.spd*dt;
+        if(k.type==='lunge'&&Math.random()<.5)parts.push(new Particle(this.x,this.y,rnd(-30,30),rnd(-30,10),.4,'#7a6c58',3))}
+      if(!k.hit&&!p.dead)this.checkHit(p,d,a);
+      if(this.t>=D.act){this.state='rec';this.t=0}
+    }else if(this.state==='rec'){
+      if(this.t>=(this.recDur||D.rec)){this.state='move';this.atk=null;this.cd=(this.phase===2&&Math.random()<.45)?.1:rnd(.5,1)*(this.cdMul||1)}
+    }
+  }
+  checkHit(p,d,a){
+    const D=this.atk.d;
+    if(D.petrify&&Game.blind){this.atk.hit=true;return}
+    const hit=(this.atk.type==='lunge'||this.atk.type==='charge')?d<this.r+p.r+10:(d<=D.range+p.r&&Math.abs(angDiff(a,this.ang))<=D.arc/2);
+    if(hit){this.atk.hit=true;p.takeDamage(D.dmg*(this.dmgMul||1),this.x,this.y,this);if(D.petrify&&!p.block&&p.iT<=0&&!p.dead)p.stun=Math.max(p.stun,1.3)}
+  }
+  addPost(n){
+    this.post+=n;this.postT=2.4;
+    if(this.post>=100){
+      this.post=100;this.state='stun';this.stunT=3;this.atk=null;
+      Game.flashMsg('POSTURA QUEBRADA');Game.hitstop=Math.max(Game.hitstop,.18);
+      burst(this.x,this.y-30,'#ffd98a',24,300,.7,3);
+    }
+  }
+  parried(){
+    if(this.state==='stun')return;
+    if(this.atk&&this.state!=='rec'){this.state='rec';this.t=0;this.recDur=1.1}
+    this.addPost(40);
+  }
+  takeHit(dmg,post,ang){
+    if(this.dead)return;
+    const stun=this.state==='stun';
+    this.hp-=stun?dmg*1.5:dmg;this.flash=.12;
+    if(!stun)this.addPost(post);
+    this.x+=Math.cos(ang)*(stun?4:2);this.y+=Math.sin(ang)*(stun?4:2);
+    
+    if(this.hp<=0){this.hp=0;this.dead=true;this.atk=null;burst(this.x,this.y-24,'#e8dcc0',40,300,1,4,200);if(this.onDeath)this.onDeath();else Game.win()}
+  }
+  weapon(){
+    const k=this.atk,rest={a:this.face+.5,ext:0};
+    if(!k||this.state==='move'||this.state==='stun')return this.state==='stun'?{a:Math.PI/2+.3,ext:-14}:rest;
+    const D=k.d,sw=k.type==='swing';
+    if(this.state==='tele'){const p=clamp(this.t/(D.tele*this.m),0,1);return{a:sw?this.ang-D.arc/2-.3*p:this.ang,ext:-12*p,glow:p*.8}}
+    if(this.state==='act'){const p=clamp(this.t/D.act,0,1);return{a:sw?this.ang-D.arc/2+D.arc*p:this.ang,ext:sw?0:28*Math.sin(p*Math.PI)}}
+    return{a:this.ang,ext:0};
+  }
+  drawTele(){
+    if(this.state!=='tele'||this.dead)return;
+    const k=this.atk,D=k.d,p=clamp(this.t/(D.tele*this.m),0,1);
+    ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.ang);
+    ctx.fillStyle=`rgba(190,30,30,${.12+.28*p})`;ctx.strokeStyle=`rgba(255,80,60,${.3+.5*p})`;ctx.lineWidth=2;ctx.beginPath();
+    if(k.type==='swing'||k.type==='gaze'){ctx.moveTo(0,0);ctx.arc(0,0,D.range,-D.arc/2,D.arc/2);ctx.closePath()}
+    else if(k.type==='thrust'){ctx.moveTo(0,0);ctx.arc(0,0,D.range+30,-D.arc/2,D.arc/2);ctx.closePath()}
+    else ctx.rect(0,-(this.r+6),D.move*D.act+this.r,(this.r+6)*2);
+    ctx.fill();ctx.stroke();ctx.restore();
+  }
+}
+
+/* ============ RENDERIZAÇÃO ============ */
+const PAL_P={armor:'#5b6574',trim:'#9a8a6c',cape:'#6e1f24',skin:'#d9b08c',hair:'#2a1d14',leg:'#2c2a2e',eye:'#111'};
+const PAL_B={armor:'#4a5a4a',trim:'#b08d57',cape:'#2e3a4d',skin:'#c79d7b',hair:'#d8d4c8',leg:'#2a2623',eye:'#222'};
+const BR=[{x:A.x1+A.inset-12,y:A.y1+10,s:0},{x:A.x2-A.inset+12,y:A.y1+10,s:2},{x:A.x1+12,y:A.y2-12,s:4},{x:A.x2-12,y:A.y2-12,s:1}];
+
+function rr(x,y,w,h,r){ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,y,w,h,r);else ctx.rect(x,y,w,h)}
+
+let BGG,ROOM_BG={};
+
+function lying(e,pal){
+  ctx.fillStyle='rgba(0,0,0,.5)';ctx.beginPath();ctx.ellipse(e.x,e.y+2,24,8,0,0,7);ctx.fill();
+  ctx.fillStyle=pal.armor;ctx.beginPath();ctx.ellipse(e.x,e.y-6,20,8,0,0,7);ctx.fill();
+  ctx.fillStyle=pal.skin;ctx.beginPath();ctx.arc(e.x+22,e.y-6,7,0,7);ctx.fill();
+  ctx.fillStyle=pal.cape;ctx.beginPath();ctx.ellipse(e.x-6,e.y-8,14,6,0,0,7);ctx.fill();
+}
+
+function fighter(e,pal,w,spear){
+  if(e.dead){lying(e,pal);return}
+  const x=e.x,y=e.y,t=e.walkT*11,bob=e.moving?-Math.abs(Math.sin(t))*2.5:Math.sin(Game.t*2)*.8;
+  const fx=Math.cos(e.face),fy=Math.sin(e.face),by=y+bob;
+  ctx.fillStyle='rgba(0,0,0,.5)';ctx.beginPath();ctx.ellipse(x,y+3,e.r*1.3,e.r*.5,0,0,7);ctx.fill();
+  ctx.save();if(e.flash>0)ctx.filter='brightness(2.6)';
+  const hx=x+fx*12,hy=by-22+fy*6;
+  const weapon=()=>{
+    if(!w)return;
+    const L=(spear?62:38)+(w.ext||0),dx=Math.cos(w.a),dy=Math.sin(w.a),tx=hx+dx*L,ty=hy+dy*L;
+    ctx.lineCap='round';
+    if(spear){
+      ctx.strokeStyle='#5a3d22';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(hx-dx*16,hy-dy*16);ctx.lineTo(tx,ty);ctx.stroke();
+      ctx.fillStyle='#cfd3d6';ctx.beginPath();ctx.moveTo(tx+dx*12,ty+dy*12);ctx.lineTo(tx-dy*4,ty+dx*4);ctx.lineTo(tx+dy*4,ty-dx*4);ctx.fill();
+    }else{
+      ctx.strokeStyle='#b9bfc4';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(hx,hy);ctx.lineTo(tx,ty);ctx.stroke();
+      ctx.strokeStyle='#f1f4f6';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(hx,hy);ctx.lineTo(tx,ty);ctx.stroke();
+      ctx.strokeStyle='#8a6a2f';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(hx-dy*6+dx*5,hy+dx*6+dy*5);ctx.lineTo(hx+dy*6+dx*5,hy-dx*6+dy*5);ctx.stroke();
+    }
+    if(w.glow){ctx.strokeStyle=`rgba(255,70,50,${w.glow})`;ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(hx,hy);ctx.lineTo(tx,ty);ctx.stroke()}
+    ctx.fillStyle=pal.skin;ctx.beginPath();ctx.arc(hx,hy,3.2,0,7);ctx.fill();
+  };
+  const cape=()=>{ctx.fillStyle=pal.cape;ctx.beginPath();ctx.moveTo(x-10,by-32);ctx.lineTo(x+10,by-32);ctx.lineTo(x+13-fx*7+Math.sin(t)*2,by-2);ctx.lineTo(x-13-fx*7+Math.sin(t)*2,by-2);ctx.fill()};
+  if(fy<0)weapon();
+  const sw=e.moving?Math.sin(t)*5:0;
+  ctx.strokeStyle=pal.leg;ctx.lineWidth=5;ctx.lineCap='round';ctx.beginPath();
+  ctx.moveTo(x-5,by-10);ctx.lineTo(x-5+sw*.4,y+(sw>0?-2:0));ctx.moveTo(x+5,by-10);ctx.lineTo(x+5-sw*.4,y+(sw<0?-2:0));ctx.stroke();
+  if(fy>=-.2)cape();
+  ctx.fillStyle=pal.armor;rr(x-9,by-34,18,26,5);ctx.fill();ctx.strokeStyle=pal.trim;ctx.lineWidth=1.5;ctx.stroke();
+  ctx.fillStyle=pal.trim;ctx.fillRect(x-9,by-14,18,3);
+  ctx.beginPath();ctx.arc(x-11,by-31,5,0,7);ctx.arc(x+11,by-31,5,0,7);ctx.fill();
+  if(fy<-.2)cape();
+  const hdx=x+fx*2.5,hdy=by-43+fy*1.5;
+  ctx.fillStyle=pal.skin;ctx.beginPath();ctx.arc(hdx,hdy,8.5,0,7);ctx.fill();
+  ctx.fillStyle=pal.hair;ctx.beginPath();if(fy<-.2)ctx.arc(hdx,hdy,8.8,0,7);else ctx.arc(hdx,hdy-.5,8.8,Math.PI,0);ctx.fill();
+  if(fy>-.2){ctx.fillStyle=pal.eye;[-3,3].forEach(o=>{ctx.beginPath();ctx.arc(hdx+fx*4+o*.8,hdy+1+fy*2,1.3,0,7);ctx.fill()})}
+  if(fy>=0)weapon();
+  ctx.restore();
+}
+
+function drawPlayer(p){
+  ctx.save();if(Game.young){ctx.translate(p.x,p.y);ctx.scale(.82,.82);ctx.translate(-p.x,-p.y)}
+  p.trail.forEach(t=>{ctx.globalAlpha=t.a*.6;ctx.fillStyle='#8da2c4';ctx.beginPath();ctx.ellipse(t.x,t.y-22,10,20,0,0,7);ctx.fill()});
+  ctx.globalAlpha=1;
+  if(p.iT>0&&p.dashT>0)ctx.globalAlpha=.55;
+  fighter(p,Game.young?PAL_P:PAL_V,Game.noWeapon?null:p.weapon(),false);ctx.globalAlpha=1;
+  if(p.block&&!p.dead){
+    const parry=p.blockT<.18;
+    ctx.strokeStyle=parry?'rgba(255,240,200,.95)':'rgba(200,161,90,.6)';ctx.lineWidth=parry?4:2.5;
+    ctx.beginPath();ctx.arc(p.x,p.y-22,26,p.face-.95,p.face+.95);ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawBoss(b){
+  if(b.draw)b.draw();else{fighter(b,b.pal||PAL_B,b.weapon(),b.spear!==false);if(b.deco&&!b.dead)b.deco()}
+  if(b.state==='stun'&&!b.dead)for(let i=0;i<3;i++){const a=Game.t*6+i*2.1;ctx.fillStyle='#ffd98a';ctx.beginPath();ctx.arc(b.x+Math.cos(a)*15,b.y-58+Math.sin(a)*4,2.6,0,7);ctx.fill()}
+}
+function drawBrazier(b){
+  const x=b.x,y=b.y,f=Game.t*9+b.s;
+  ctx.fillStyle='rgba(0,0,0,.4)';ctx.beginPath();ctx.ellipse(x,y+2,14,5,0,0,7);ctx.fill();
+  ctx.fillStyle='#2a2522';ctx.fillRect(x-2,y-22,4,22);
+  ctx.fillStyle='#3b332d';ctx.beginPath();ctx.moveTo(x-12,y-30);ctx.lineTo(x+12,y-30);ctx.lineTo(x+7,y-20);ctx.lineTo(x-7,y-20);ctx.fill();
+  const h=19;
+  [['#ff7a1a',1],['#ffc247',.65],['#fff1b0',.35]].forEach(([c,s])=>{
+    ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(x-9*s,y-30);
+    ctx.quadraticCurveTo(x-10*s,y-30-h*s*.6,x,y-30-h*s);
+    ctx.quadraticCurveTo(x+10*s,y-30-h*s*.6,x+9*s,y-30);ctx.fill();
+  });
+}
+function drawSlashes(p,b){
+  const arc=(x,y,k,col,range)=>{
+    const d=k.d,t=k.t;if(t<d.w)return;
+    const prog=clamp((t-d.w)/d.a,0,1),al=t<d.w+d.a?1:1-(t-d.w-d.a)/.12;if(al<=0)return;
+    ctx.save();ctx.translate(x,y-18);ctx.lineCap='round';ctx.globalAlpha=al;
+    for(let i=0;i<3;i++){ctx.strokeStyle=`rgba(${col},${.55-i*.15})`;ctx.lineWidth=7-i*2;ctx.beginPath();ctx.arc(0,0,range*(.8+i*.06),k.ang-d.arc/2,k.ang-d.arc/2+d.arc*prog);ctx.stroke()}
+    ctx.restore();
+  };
+  if(p.atk)arc(p.x,p.y,p.atk,p.atk.type==='heavy'?'255,200,120':'232,220,192',p.atk.d.range);
+  if(b.atk&&b.atk.type==='swing'&&(b.state==='act'||b.state==='rec')){
+    const k={d:{w:0,a:b.atk.d.act,arc:b.atk.d.arc},t:b.state==='act'?b.t:b.atk.d.act+b.t,ang:b.ang};arc(b.x,b.y,k,'230,90,70',b.atk.d.range);
+  }
+  if(b.atk&&b.atk.type==='thrust'&&b.state==='act'){
+    ctx.save();ctx.strokeStyle='rgba(255,230,210,.6)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(b.x,b.y-22);ctx.lineTo(b.x+Math.cos(b.ang)*110,b.y-22+Math.sin(b.ang)*110);ctx.stroke();ctx.restore();
+  }
+}
+function lighting(p,X){
+  ctx.globalCompositeOperation='lighter';
+  for(const b of BR){
+    const f=.9;
+    const g=ctx.createRadialGradient(b.x,b.y-36,2,b.x,b.y-36,240*f);
+    g.addColorStop(0,`rgba(255,150,60,${.3+.12*Clock.cur.dark})`);g.addColorStop(1,'rgba(255,100,30,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  }
+  ctx.globalCompositeOperation='source-over';
+  ctx.globalCompositeOperation='lighter';(X||[]).forEach(([x,y,r,c])=>{const q=ctx.createRadialGradient(x,y,2,x,y,r);q.addColorStop(0,`rgba(${c||'255,140,50'},.42)`);q.addColorStop(1,`rgba(${c||'255,110,30'},0)`);ctx.fillStyle=q;ctx.fillRect(x-r,y-r,r*2,r*2)});ctx.globalCompositeOperation='source-over';
+  const g=ctx.createRadialGradient(p.x,p.y-20,70,p.x,p.y-20,540);
+  g.addColorStop(0,'rgba(5,3,6,0)');g.addColorStop(1,`rgba(3,2,4,${.6+.2*Clock.cur.dark})`);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+}
+function drawBossBars(b){
+  const x=240,w=480;
+  ctx.textAlign='center';ctx.font='700 15px Cinzel,Georgia,serif';ctx.fillStyle='#c8a15a';ctx.fillText(b.name||'MESTRE QUÍRON',W/2,24);
+  ctx.fillStyle='#0b0807';ctx.fillRect(x,30,w,14);
+  ctx.fillStyle='#e8dcc0';ctx.fillRect(x,30,w*Math.max(0,b.ghost)/b.maxHp,14);
+  const g=ctx.createLinearGradient(0,30,0,44);g.addColorStop(0,'#c93d3d');g.addColorStop(1,'#7d1b1f');
+  ctx.fillStyle=g;ctx.fillRect(x,30,w*b.hp/b.maxHp,14);
+  ctx.strokeStyle='#8a6d3b';ctx.lineWidth=1.5;ctx.strokeRect(x,30,w,14);
+  ctx.beginPath();ctx.moveTo(x+w/2,30);ctx.lineTo(x+w/2,44);ctx.stroke();
+  ctx.fillStyle='#0b0807';ctx.fillRect(x,48,w,7);
+  ctx.fillStyle=b.state==='stun'&&((Game.t*10)|0)%2?'#fff':'#d9a441';ctx.fillRect(x,48,w*b.post/100,7);
+  ctx.strokeStyle='#5c4a2a';ctx.strokeRect(x,48,w,7);
+  ctx.font='italic 11px Georgia,serif';ctx.fillStyle='#8f7f60';ctx.textAlign='left';ctx.fillText('Postura',x,68);
+}
+
+/* ============ JOGO ============ */
+const S={};['lmb','rmb','shift','dash','save','talk','venda','diario'].forEach(k=>S[k]=$('s-'+k));
+const setSlot=(k,c,on)=>{S[k].style.setProperty('--c',c);S[k].classList.toggle('on',!!on)};
+
+const Game={
+  state:'dialogue',t:0,hitstop:0,shake:0,msg:'',msgT:0,endT:0,result:'',
+  player:new Player(),boss:null,artur:null,lord:null,king:null,arturN:null,mode:'castle',young:true,room:'hall',npcs:[],props:[],dmgBonus:0,allNpcs:[],lt:'',playerName:'',armed:true,noWeapon:false,visitedOut:false,nightTrig:false,vilaT:0,villageAlert:false,heliaT:0,heliaIntro:false,heliaFailed:false,heliaCombat:false,harpies:[],guards:[],inst:null,quiron:null,quironN:null,armorBonus:0,trophies:[],venda:false,blind:false,quests:{},track:0,foeQ:[],foeQuest:0,heliaAttack:false,nearNpc:false,saveFlash:0,petrQ:[],nextPetr:0,
+  get combat(){const m=this.mode;return m==='tutorial'||m==='train'||m==='test'||(m==='escape'&&this.room==='gate'&&this.armed)||(m==='mission'&&this.room!=='quiron'&&!!this.boss&&!this.boss.dead)||(m==='sq'&&!!this.boss&&!this.boss.dead)},
+  syncStage(){
+    const m=this.mode;
+    gstate=m==='escape'?GS.FUGA:m==='golpe'?GS.GOLPE:m==='village'?(this.villageAlert?GS.FUGA_SEM_ARMAS:GS.VILA):m==='forest'?GS.BOSQUE:m==='helia'?(this.heliaAttack?GS.ATAQUE:GS.HELIACA):m==='train'?GS.TREINO:m==='test'?GS.TESTE:m==='mission'?GS.MISSAO:m==='sq'?GS.SQ:m==='return'?GS.RETORNO:GS.CASTLE;
+  },
+  rp(){const p=this.player;p.reset();p.maxHp=100+this.armorBonus;p.hp=p.maxHp},
+  initCastle(){
+    this.mode='castle';this.young=true;this.boss=DUMMY;this.armed=true;this.nightTrig=false;this.visitedOut=false;this.playerName='';
+    this.armorBonus=0;this.trophies=[];this.venda=false;this.blind=false;this.quests={};this.track=0;this.guards=[];this.heliaAttack=false;this.villageAlert=false;
+    this.allNpcs=NPC_DEFS.map(d=>new NPC(d));
+    this.king=new NPC(KING_DEF);this.arturN=new NPC(ARTUR_ESC);this.quironN=new NPC(QUI_DEF);this.lord=this.lord||new OrderLord();
+    this.player.reset();this.hitstop=0;this.shake=0;this.endT=0;this.msgT=0;this.result='';
+    $('obj').classList.remove('on');$('who').textContent='Príncipe de Aroer';Clock.t=.05;Clock.step(0,false);
+    this.setRoom('garden',480,450);this.state='explore';
+  },
+  // ----- salvamento -----
+  snapshot(){return{v:2,mode:this.mode,room:this.room,x:this.player.x,y:this.player.y,t:Clock.t,dmg:this.dmgBonus,arm:this.armorBonus,name:this.playerName,tro:this.trophies,venda:this.venda,q:this.quests,nt:this.nightTrig,track:this.track,young:this.young,armed:this.armed,
+    talked:this.allNpcs.filter(n=>n.talked).map(n=>n.name),hs:this.allNpcs.filter(n=>n.petrified||n.dead).map(n=>[n.name,n.dead?2:1])}},
+  saveable(){return this.state==='explore'&&['castle','village','forest','helia','mission','sq'].includes(this.mode)&&!(this.mode==='village'&&this.villageAlert)&&!(this.mode==='helia'&&this.heliaAttack)&&!(this.boss&&this.boss!==DUMMY&&!this.boss.dead)},
+  manualSave(){if(this.saveable()&&Save.write()){toast('Jogo Salvo!');this.saveFlash=1}else toast('Não é possível salvar agora')},
+  restore(d){
+    this.initCastle();
+    Object.assign(this,{dmgBonus:d.dmg||0,armorBonus:d.arm||0,playerName:d.name||'',trophies:d.tro||[],venda:!!d.venda,quests:d.q||{},nightTrig:!!d.nt,track:d.track||0,young:d.young!==false,armed:d.armed!==false});
+    (d.talked||[]).forEach(nm=>{const n=this.allNpcs.find(x=>x.name===nm);if(n)n.talked=true});
+    (d.hs||[]).forEach(([nm,k])=>{const n=this.allNpcs.find(x=>x.name===nm);if(n){n.mute=true;if(k===2)n.dead=true;else{n.petrified=true;n.pal=PAL_STONE}}});
+    this.mode=d.mode||'castle';this.visitedOut=true;
+    if(this.playerName)$('who').textContent=this.playerName;
+    this.rp();this.setRoom(d.room,d.x,d.y);
+    if(this.mode==='helia')this.heliaIntro=true;
+    Clock.t=d.t;Clock.step(0,false);this.syncStage();this.state='explore';
+  },
+  // ----- salas, NPCs, chefes -----
+  roomNpcs(id){
+    const m=this.mode;
+    if(m==='escape')return[this.arturN];
+    if(m==='golpe')return[this.king];
+    if((m==='mission'||m==='return'||m==='sq')&&id==='quiron')return[this.quironN];
+    let L=this.allNpcs.filter(n=>n.room===id);
+    L=m==='sq'?L.filter(n=>n.sqOnly||(n.lore&&n.mute)):L.filter(n=>!n.sqOnly);
+    if(m==='village'&&this.villageAlert)L=L.concat(this.guards);
+    return L;
+  },
+  mBoss(k){return k==='medusa'?new Medusa():k==='cerbero'?new Cerbero():new Minotauro()},
+  setRoom(id,x,y){
+    const R=ROOMS[id],p=this.player;
+    if(R.mode)this.mode=R.mode;
+    const m=this.mode;
+    this.room=id;p.x=x;p.y=y;p.atk=null;p.face=-Math.PI/2;this.nearNpc=false;this.blind=false;
+    this.npcs=this.roomNpcs(id);
+    this.props=(R.pillars||[]).map(q=>['pillar',q[0],q[1],16]).concat(R.props||[],m==='escape'?(ESC_PROPS[id]||[]):[]);
+    BR.length=0;(R.torches||[]).forEach(([tx,ty],i)=>BR.push({x:tx,y:ty,s:i}));parts.length=0;
+    this.boss=DUMMY;
+    if(m==='escape'&&id==='gate')this.boss=this.lord;
+    if(m==='train'||m==='test')this.boss=this.quiron;
+    if(m==='mission'&&R.boss){this.boss=this.mBoss(R.boss);Dlg.say([{n:'Narrador',t:BOSS_INTRO[R.boss]}],false)}
+    this.noWeapon=!this.armed;
+    if(R.area==='aroer')this.visitedOut=true;
+    if(m==='escape'){const a=this.arturN;a.follow=id!=='gate';a.x=id==='gate'?250:x+36;a.y=id==='gate'?460:y+14;
+      if(id==='gate'&&!this.armed)Dlg.say([art('Pegue essa espada, Alteza! Enfrente-o para podermos passar!')],false)}
+    if(m==='sq')this.questEnter();
+    if(R.enter)R.enter();
+  },
+  fireLights(){
+    const L=this.props.filter(q=>q[0]==='fire').map(q=>[q[1],q[2]-30,130]);
+    if(this.mode==='escape'&&this.room==='gate'&&!this.armed)L.push([480,392,70,'200,230,255']);
+    return L;
+  },
+  allTalked(){return this.allNpcs.filter(n=>n.area==='castle'||n.area==='aroer').every(n=>n.talked)},
+  // ----- missões secundárias -----
+  qs(id){return this.quests[id]||(this.quests[id]={s:'none',i:0,k:0,got:[]})},
+  questEnter(){
+    this.foeQ=[];this.boss=DUMMY;
+    for(const q of QUESTS){const st=this.qs(q.id);if(st.s!=='act')continue;const sp=q.steps[st.i];
+      if(sp&&sp.t==='kill'&&sp.room===this.room){this.foeQ=sp.foes.slice(st.k||0);this.foeQuest=q.id;if(this.foeQ.length)this.spawnFoe();break}}
+  },
+  spawnFoe(){this.boss=new Foe(this.foeQ[0]);this.boss.x=480;this.boss.y=240},
+  foeDone(){
+    const q=QUESTS.find(x=>x.id===this.foeQuest),st=this.qs(q.id);st.k=(st.k||0)+1;this.foeQ.shift();
+    if(this.foeQ.length){this.state='explore';this.spawnFoe();return}
+    this.boss=DUMMY;this.state='explore';this.stepDone(q);
+  },
+  stepDone(q){
+    const st=this.qs(q.id);st.i++;st.k=0;st.got=[];const sp=q.steps[st.i];
+    if(sp&&sp.t==='ret')toast('Retorne a '+q.giver);else if(sp)toast('Objetivo: '+sp.obj);
+    if(sp&&sp.t==='kill'&&sp.room===this.room)this.questEnter();
+  },
+  questObjs(){
+    const L=[];
+    for(const q of QUESTS){const st=this.qs(q.id);if(st.s!=='act')continue;const sp=q.steps[st.i];
+      if(sp&&sp.t==='obj')sp.list.forEach((o,i)=>{if(o.room===this.room&&!(st.got||[]).includes(i))L.push({...o,q:q.id,idx:i})})}
+    return L;
+  },
+  collect(o){
+    const q=QUESTS.find(x=>x.id===o.q),st=this.qs(q.id);st.got=(st.got||[]).concat(o.idx);SFX.clang();
+    const fin=st.got.length>=q.steps[st.i].list.length,after=()=>{this.state='explore';if(fin)this.stepDone(q)};
+    if(o.text){this.state='dialogue';$('prompt').style.display='none';Dlg.say([{n:'Narrador',t:o.text}],true,after)}else{toast(o.label);after()}
+  },
+  questTalk(n){
+    const q=QUESTS.find(x=>x.id===n.quest),st=this.qs(q.id);
+    let lines=q.after,cb=()=>{this.state='explore'};
+    if(st.s==='none'){lines=q.offer;cb=()=>{this.state='explore';st.s='act';st.i=0;st.k=0;st.got=[];this.track=q.id;toast('Missão aceita: '+q.title);this.questEnter()}}
+    else if(st.s==='act'){const sp=q.steps[st.i];if(sp.t==='ret'){lines=q.done;cb=()=>{this.state='explore';st.s='done';toast('Missão concluída: '+q.title);const nx=QUESTS.find(x=>this.qs(x.id).s==='act');this.track=nx?nx.id:0}}else lines=q.remind}
+    this.state='dialogue';$('prompt').style.display='none';
+    Dlg.say(lines.map(t=>({n:n.name,t})),true,cb);
+  },
+  trackText(){
+    const q=QUESTS.find(x=>x.id===this.track);if(!q)return '';const st=this.qs(q.id);if(st.s!=='act')return '';const sp=q.steps[st.i];
+    return 'Missão: '+q.title+(sp?' — '+sp.obj:'');
+  },
+  helState(){
+    const n=QUESTS.filter(q=>this.qs(q.id).s==='done').length,k=this.qs(10).s==='done';
+    return n>=7&&k?['ALIADA','A Região Helíaca une racionalistas e tradicionalistas e promete apoio contra a Ordem.']:n>=4?['ESTÁVEL','A Região Helíaca se reergue, ainda dividida, mas em paz.']:['EM CONFLITO','A Região Helíaca segue em disputa, e a Ordem encontrará terreno fértil.'];
+  },
+  // ----- laço de exploração -----
+  modeTick(dt){
+    const p=this.player,m=this.mode;
+    if(m==='castle'&&!this.nightTrig&&this.allTalked()&&Clock.t>=.6&&Clock.t<.9){
+      this.nightTrig=true;this.state='dialogue';$('prompt').style.display='none';
+      Dlg.say([{n:'Guarda Real',t:'Vossa Alteza, a noite se aproxima. É hora de retornar ao Palácio.'}],true,()=>this.toKing());return;
+    }
+    if(m==='escape'&&this.room==='gate'&&!this.armed){
+      if(Math.random()<.25)parts.push(new Particle(480+rnd(-18,18),392,rnd(-8,8),rnd(-50,-20),.9,'#e8f4ff',2));
+      if(Math.hypot(p.x-480,p.y-400)<30){this.armed=true;this.noWeapon=false;this.lord.mode='fight';this.lord.cd=1.2;SFX.clang();Dlg.say([art('Isso! Agora derrube-o, Alteza!')],false)}
+    }
+    if(m==='village'&&this.villageAlert)this.chaseTick(dt);
+    if(m==='helia')this.heliaTick(dt);
+  },
+  castleUpdate(dt){
+    const p=this.player,R=ROOMS[this.room];
+    this.modeTick(dt);if(this.state!=='explore')return;
+    this.npcs.forEach(n=>n.update(dt,p));
+    this.props.forEach(q=>pushOut(p,q[1],q[2]-4,q[3]));
+    this.npcs.forEach(n=>pushOut(p,n.x,n.y,n.r));
+    let near=null,nd=84,door=null,side=null,mo=null,md=46;
+    this.npcs.forEach(n=>{if(n.mute)return;const d=Math.hypot(n.x-p.x,n.y-p.y);if(d<nd){nd=d;near=n}});
+    if(this.mode==='sq'){
+      const objs=this.questObjs(),au=objs.find(o=>o.auto&&Math.hypot(o.x-p.x,o.y-p.y)<30);
+      if(au){this.collect(au);return}
+      objs.forEach(o=>{if(o.auto)return;const d=Math.hypot(o.x-p.x,o.y-p.y);if(d<md){md=d;mo=o}});
+    }
+    R.doors.forEach(d=>{
+      if(d.side){const t=clamp((p.y-A.y1)/(A.y2-A.y1),0,1),xm=A.x2-A.inset*(1-t)-p.r;if(p.x>=xm-3&&p.y>d.y1&&p.y<d.y2)side=d}
+      else if(Math.abs(p.x-d.x)<(d.gate?60:44)&&p.y<A.y1+60)door=d;
+    });
+    this.nearNpc=!!near;
+    const pr=$('prompt');
+    if(near){pr.style.display='block';pr.textContent='[ESPAÇO] Conversar com '+near.name}
+    else if(mo){pr.style.display='block';pr.textContent='[ESPAÇO] '+mo.label}
+    else if(door&&!door.hidden){pr.style.display='block';pr.textContent='▲ '+door.label}
+    else pr.style.display='none';
+    if(Input.hit(' ')){if(near){this.talk(near);return}if(mo){this.collect(mo);return}}
+    if(side){this.useDoor(side);return}
+    if(door&&p.y<A.y1+p.r+8)this.useDoor(door);
+  },
+  talk(n){
+    if(n.quest){this.questTalk(n);return}
+    this.state='dialogue';$('prompt').style.display='none';
+    const L=n.linesFn?n.linesFn():n.lines;
+    Dlg.say(L.map(t=>typeof t==='string'?{n:n.name,t}:t),true,()=>{this.state='explore';n.talked=true;if(n.onEnd)n.onEnd(n);this.afterTalk(n)});
+  },
+  afterTalk(){
+    if(this.mode==='castle'){if(this.allTalked()&&!this.nightTrig)Clock.t=Math.max(Clock.t,.57)}
+    else if(this.mode==='village'&&!this.villageAlert&&this.allNpcs.filter(x=>x.room==='vila').every(x=>x.talked))this.startChase();
+    else if(this.mode==='helia'&&!this.heliaAttack&&this.allNpcs.filter(x=>x.lore).every(x=>x.talked))this.startAttack();
+  },
+  lightList(){
+    const L=(ROOMS[this.room].lights||[]).slice();
+    this.props.forEach(q=>{
+      if(q[0]==='lamp')L.push([q[1],q[2]-66,120]);
+      else if(q[0]==='house'||q[0]==='inn')L.push([q[1]-31,q[2]-53,46],[q[1]+31,q[2]-53,46]);
+      else if(q[0]==='barn')L.push([q[1],q[2]-60,70]);
+      else if(q[0]==='hut')L.push([q[1]+22,q[2]-34,50]);
+      else if(q[0]==='campfire')L.push([q[1],q[2]-14,130]);
+      else if(q[0]==='forge')L.push([q[1]+20,q[2]-30,80]);
+    });
+    return L;
+  },
+  useDoor(d){
+    const p=this.player;if(busy)return;
+    const block=lines=>{p.y=A.y1+80;this.state='dialogue';$('prompt').style.display='none';Dlg.say(lines,true,()=>{this.state='explore'})};
+    if(d.needs==='alert'&&!this.villageAlert)return block([{n:'{n}',t:'Ainda não tenho razão para deixar a vila... e não sei para onde iria.'}]);
+    if(d.needs==='mission'&&this.mode!=='mission')return block([qi(this.mode==='sq'?'Esses guardiões já caíram.':'Ainda não, aprendiz.')]);
+    if(d.needs==='sq'&&this.mode!=='sq')return block([{n:'{n}',t:'Ainda não é hora de ir até lá.'}]);
+    if((this.mode==='sq'||this.mode==='mission')&&this.boss&&this.boss!==DUMMY&&!this.boss.dead)return block([{n:'Narrador',t:'A saída está selada: não há como fugir da luta.'}]);
+    if(this.mode==='escape'&&!((this.room==='gallery'&&d.to==='gate')||(this.room==='gate'&&d.to==='gallery')))return block([art('Por aí não, Alteza! O fogo e os traidores tomaram tudo!')]);
+    this.state='wait';$('prompt').style.display='none';
+    transition(()=>{if(d.mode)this.mode=d.mode;this.setRoom(d.to,d.sx,d.sy||A.y1+80);Input.keys={};this.state='explore';this.syncStage()});
+  },
+  // ----- noite, golpe e fuga -----
+  toKing(){
+    this.state='wait';
+    transition(()=>{this.mode='golpe';Clock.t=.8;Clock.step(0,false);this.setRoom('hall',480,450);this.syncStage();this.state='explore'});
+  },
+  startGolpe(){
+    this.state='wait';$('prompt').style.display='none';
+    transition(()=>{this.mode='scene';Scene.start(drawBedroom,GOLPE_TL())});
+  },
+  startEscape(){
+    transition(()=>{
+      this.mode='escape';this.young=true;this.armed=false;this.rp();this.lord.reset();Clock.t=.82;Clock.step(0,false);
+      this.setRoom('gallery',480,440);this.syncStage();this.state='explore';
+      Dlg.say([art('Por aqui, Alteza! O pátio é a nossa saída!')],false);
+    });
+  },
+  retry(){
+    this.rp();
+    if(this.mode==='escape'){this.lord.reset();this.armed=false;this.setRoom('gate',480,470)}
+    else if(this.mode==='test'){this.quiron.reset();this.quiron.mode='fight';this.quiron.cd=1.5;this.setRoom('quiron',480,470)}
+    else this.setRoom(this.room,480,470);
+    this.state='explore';this.syncStage();
+  },
+  afterBoss(){
+    if(this.mode==='mission'){this.missionWin();return}
+    if(this.mode==='sq'){this.foeDone();return}
+    this.state='dialogue';
+    Dlg.say([art('Alteza... conseguimos. Mas ouça: eles virão em ondas, e este portão não pode cair.'),
+      art('Eu fico. Seguro os guardas traidores aqui. Corra para a noite e viva: é a minha última ordem.'),
+      art('Vá! E lembre-se: o motivo pelo qual se luta importa mais do que a força do braço.')],true,
+      ()=>{SFX.clang();cardSeq(['Artur ficou para trás, no portão.','ANOS DEPOIS…'],()=>this.initVillage())});
+  },
+  // ----- vila e fuga sem armas -----
+  initVillage(){
+    this.mode='village';this.young=false;this.boss=DUMMY;this.armed=false;this.villageAlert=false;this.guards=[];this.armorBonus=0;
+    this.allNpcs=NPC_DEFS.map(d=>new NPC(d));
+    this.rp();parts.length=0;this.hitstop=0;this.shake=0;
+    Clock.t=.3;Clock.step(0,false);$('obj').classList.remove('on');
+    this.setRoom('vila',480,470);this.syncStage();this.state='wait';
+    Dlg.say([{n:'Narrador',t:'Anos depois, o príncipe vive sob outro nome, para se esconder dos perseguidores de Aroer. Ele escolhe agora o nome de disfarce...'}],true,()=>{
+      askName(()=>{this.state='dialogue';Dlg.say([{n:'Narrador',t:'Os anos passaram. Em uma vila humilde, longe de tudo, {n} vive como camponês, sem armas, escondendo quem realmente é.'}],true,()=>{this.state='explore'})});
+    });
+  },
+  startChase(){
+    this.villageAlert=true;this.state='dialogue';$('prompt').style.display='none';
+    this.guards=[0,1].map(i=>new NPC({...GUARD_DEF,x:100+i*40,y:490+i*25}));this.npcs=this.npcs.concat(this.guards);SFX.door();
+    Dlg.say([{n:'Soldado da Ordem',t:'Revistem a vila inteira! O herdeiro de Aroer está escondido aqui!'},{n:'{n}',t:'Eles me encontraram... e eu estou sem armas. Preciso chegar à trilha do bosque antes que me alcancem!'}],true,()=>{this.state='explore';this.syncStage()});
+  },
+  chaseTick(dt){
+    const p=this.player;
+    this.guards.forEach(g=>{
+      const dx=p.x-g.x,dy=p.y-g.y,d=Math.hypot(dx,dy)||1;g.face=Math.atan2(dy,dx);g.moving=true;g.walkT+=dt;
+      g.x+=dx/d*88*dt;g.y+=dy/d*88*dt;this.props.forEach(q=>pushOut(g,q[1],q[2]-4,q[3]));bounds(g);
+      if(d<g.r+p.r+6&&this.state==='explore')this.caught();
+    });
+  },
+  caught(){
+    this.state='dialogue';
+    Dlg.say([{n:'Soldado da Ordem',t:'Peguei! ... Ei, ele escorregou! Atrás dele!'}],true,()=>{this.player.x=480;this.player.y=470;this.guards.forEach((g,i)=>{g.x=100+i*40;g.y=490+i*25});this.state='explore'});
+  },
+  // ----- Região Helíaca: chegada, ataque e fracasso -----
+  enterHelia(){
+    if(this.mode!=='helia')return;
+    this.heliaT=0;this.heliaIntro=false;this.heliaFailed=false;this.heliaAttack=false;this.harpies=[];
+    Clock.t=.1;Clock.step(0,false);
+  },
+  heliaTick(dt){
+    const p=this.player;
+    if(!this.heliaIntro){
+      this.heliaIntro=true;this.state='dialogue';$('prompt').style.display='none';
+      Dlg.say([{n:'{n}',t:'A Região Helíaca... Eleutéria, a cidade principal, branca e cheia de vozes. Vou ouvir o que seus moradores têm a dizer.'}],true,()=>{this.state='explore'});return;
+    }
+    if(!this.heliaAttack)return;
+    this.heliaT+=dt;
+    this.harpies.forEach(h=>{
+      h.ph+=dt*8;
+      if(h.state==='circ'){h.a+=dt*h.w;h.x=480+Math.cos(h.a)*(260+h.r);h.y=250+Math.sin(h.a)*80+h.r*.3;h.cd-=dt;if(h.cd<=0&&this.heliaT>2){h.state='dive';h.tx=p.x;h.ty=p.y;h.t=0}}
+      else{h.t+=dt;const dx=h.tx-h.x,dy=h.ty-h.y,d=Math.hypot(dx,dy)||1;h.x+=dx/d*380*dt;h.y+=dy/d*380*dt;
+        if(d<26){if(!p.dead)p.takeDamage(7,h.x,h.y,DUMMY);h.state='circ';h.cd=rnd(2,3.5)}else if(h.t>1.2){h.state='circ';h.cd=2}}
+    });
+    this.nextPetr-=dt;if(this.nextPetr<=0&&this.petrQ.length){this.petrify(this.petrQ.shift(),this.petrQ.length);this.nextPetr=2.4}
+    if(p.hp<25)p.hp=25;
+    if(!this.heliaFailed&&(p.hp<=45||(this.petrQ.length===0&&this.heliaT>8)||this.heliaT>24))this.heliaFail();
+  },
+  startAttack(){
+    this.heliaAttack=true;this.heliaT=0;this.heliaFailed=false;this.state='dialogue';$('prompt').style.display='none';
+    this.harpies=[0,1,2,3].map(i=>({x:260+i*130,y:180,a:i*1.6,w:.8+i*.12,r:i*15,ph:i,state:'circ',cd:2+i*.7,t:0,tx:0,ty:0}));
+    this.petrQ=this.npcs.filter(n=>!n.mute);this.nextPetr=2.2;SFX.scream();this.syncStage();
+    Dlg.say([{n:'Menina Zoe',t:'Mamãe, olha o céu! Aquelas coisas... estão vindo para cá!'},{n:'{n}',t:'Harpias! Todos para dentro dos templos! Rápido!'}],true,()=>{this.state='explore'});
+  },
+  petrify(n,i){
+    if(i%2){n.dead=true;burst(n.x,n.y-20,'#a3262a',22,200,.8,3,300)}else{n.petrified=true;n.pal=PAL_STONE;burst(n.x,n.y-30,'#b8b8b8',26,200,.9,3)}
+    n.mute=true;SFX.clang();
+  },
+  heliaFail(){
+    this.heliaFailed=true;this.state='dialogue';$('prompt').style.display='none';
+    Dlg.say([{n:'{n}',t:'Não... eles estão morrendo e virando pedra, e eu não consigo fazer nada! Sem uma espada, sem técnica...'},
+      {n:'{n}',t:'Coragem sem técnica é inútil. Se eu soubesse lutar, ainda estariam vivos.'},
+      {n:'Narrador',t:'Nas montanhas helíacas, dizem, vive um mestre lendário: frio, sábio, desconfiado e disciplinado. Quíron.'},
+      {n:'{n}',t:'Eu preciso encontrá-lo.'}],true,()=>{cardSeq(['A coragem sem técnica é inútil.','EM BUSCA DO MESTRE QUÍRON'],()=>this.initTrain())});
+  },
+  // ----- Quíron: treinamento, teste, três bosses, missões secundárias, retorno -----
+  initTrain(){
+    this.mode='train';this.young=false;this.boss=DUMMY;this.armed=false;this.armorBonus=0;this.blind=false;this.heliaAttack=false;
+    this.quiron=this.quiron||new Quiron();this.quiron.reset();this.inst=this.quiron;
+    this.rp();parts.length=0;Clock.t=.1;Clock.step(0,false);$('obj').classList.remove('on');
+    this.setRoom('quiron',480,470);this.syncStage();
+    Tut.steps=QSTEPS;Tut.close=QCLOSE;Tut.done=()=>this.startTest();Tut.begin();
+  },
+  startTest(){
+    transition(()=>{
+      this.mode='test';this.armed=true;this.noWeapon=false;this.rp();this.quiron.reset();parts.length=0;$('obj').classList.remove('on');
+      this.setRoom('quiron',480,470);this.quiron.mode='fight';this.quiron.cd=1.5;this.syncStage();this.state='explore';
+      Dlg.say([qi('Mostre-me por que você ainda respira.')],false);
+    });
+  },
+  quironYield(){
+    this.state='dialogue';
+    Dlg.say([qi('Basta.'),qi('Há um motivo nos seus golpes. Ainda é pequeno, mas é seu.'),qi('Você está pronto para o que vem a seguir.')],true,()=>this.startMission());
+  },
+  startMission(){
+    this.state='wait';
+    transition(()=>{
+      this.mode='mission';this.venda=true;this.blind=false;this.rp();this.setRoom('quiron',480,440);this.syncStage();this.state='dialogue';
+      Dlg.say([qi('Três feras guardam o que preciso saber: a Medusa, no Templo Esquecido; Cérbero, nas Ruínas Subterrâneas; e o Minotauro, no Labirinto.'),
+        qi('Traga a cabeça, a corrente e os chifres. Tome esta Venda, feita para a Medusa: com ela sobre os olhos (tecla V), o olhar dela não o petrifica.'),
+        qi('As portas às minhas costas levam a cada guardião. Volte com as três provas, ou não volte.')],true,()=>{this.state='explore'});
+    });
+  },
+  missionWin(){
+    const T=TROPHY[this.room];if(!this.trophies.includes(T.name))this.trophies.push(T.name);
+    this.blind=false;this.state='dialogue';SFX.clang();
+    Dlg.say([{n:'{n}',t:T.line}],true,()=>{
+      this.state='wait';
+      transition(()=>{this.mode='mission';this.rp();this.setRoom('quiron',480,440);this.syncStage();this.state='explore';if(this.trophies.length>=3)this.startSQ()});
+    });
+  },
+  startSQ(){
+    this.mode='sq';this.syncStage();this.state='dialogue';
+    Dlg.say([qi('Os três troféus... todos com a mesma marca: uma coroa dentro de um círculo.'),
+      qi('Mas antes que eu os examine, ouça: a Região Helíaca sangra. Há quem precise de você nas cidades, nas cavernas, nas ruínas.'),
+      qi('Ajude quem puder. As missões são suas, e o diário (tecla J) as registra. Quando estiver pronto, fale comigo.')],true,()=>{this.state='explore'});
+  },
+  askReturn(){
+    this.state='wait';
+    askChoice('Entregar os troféus a Quíron e encerrar?',['Sim, entregar os troféus e relatar a devastação','Ainda não, voltar às missões'],i=>{if(i===0)this.startReturn();else this.state='explore'});
+  },
+  startReturn(){
+    this.mode='return';this.syncStage();this.state='dialogue';const hs=this.helState();
+    Dlg.say([{n:'{n}',t:'Aqui estão a cabeça, a corrente e os chifres. E preciso lhe contar o que vi em Eleutéria...'},
+      qi('Pedra, sangue e silêncio. Já ouvi isso antes.'),
+      qi('A cabeça traz um selo sob a venda. A corrente, uma insígnia forjada. Os chifres, um cravo de ferro. Magia Profanada, gravada em todas as marcas.'),
+      qi('A Ordem da Nova Coroa soltou essas feras de propósito. O inimigo não é o monstro, mas quem o guia.'),
+      qi('Não basta um herói. Vou treinar os cidadãos comuns, para que aprendam a se defender sozinhos.'),
+      qi('Quanto à Região Helíaca, pelo que você fez, seu estado agora é: '+hs[0]+'. '+hs[1])],true,
+      ()=>cardSeq(['Região Helíaca: '+hs[0],'A Ordem não precisa invadir reinos. Ela faz os povos se destruírem sozinhos.','FIM DO PROTÓTIPO'],()=>menuMid()));
+  },
+  ev(n){if(this.mode==='tutorial')Tut.ev(n)},
+  initTutorial(){
+    if(!this.artur)this.artur=new Artur();
+    this.mode='tutorial';this.young=true;this.boss=this.artur;$('ol').textContent='Lição do Capitão';$('prompt').style.display='none';this.props=[];this.npcs=[];this.room='garden';this.dmgBonus=0;this.armed=true;this.noWeapon=false;this.playerName='';$('who').textContent='Príncipe de Aroer';this.inst=this.artur;Tut.steps=Tut.stepsA;Tut.close=null;Tut.done=null;this.armorBonus=0;this.blind=false;BR.length=0;Clock.t=.05;Clock.step(0,false);
+    this.player.reset();this.player.y=450;this.artur.reset();parts.length=0;
+    this.hitstop=0;this.shake=0;this.endT=0;this.msgT=0;this.result='';
+    Tut.begin();
+  },
+  flashMsg(t){this.msg=t;this.msgT=1.1},
+  win(){this.state='win';this.result='win';this.endT=1.4},
+  lose(){this.state='lose';this.result='lose';this.endT=1.2},
+  update(dt){
+    this.t+=dt;
+    if(Input.hit('r')&&this.mode==='tutorial'){this.initTutorial();return}
+    Dlg.update(dt);
+    this.nearNpc=false;
+    if(this.mode==='scene'){Scene.update(dt);return}
+    if(Input.hit('p'))this.manualSave();
+    if(Input.hit('j')&&this.mode==='sq'&&(this.state==='explore'||Journal.on))Journal.toggle();
+    if(Journal.on)return;
+    if(Input.hit('v')&&this.venda&&this.combat)this.blind=!this.blind;
+    if(this.hitstop>0){this.hitstop-=dt;return}
+    this.shake=Math.max(0,this.shake-40*dt);this.msgT=Math.max(0,this.msgT-dt);
+    if(Input.hit('t')&&(this.mode==='castle'||this.mode==='sq')){const n=(Clock.t+.08)%1;Clock.t=(this.mode==='castle'&&!this.allTalked()&&n>=.56&&n<.9)?.55:n}
+    Clock.step(dt,(this.mode==='forest'||this.mode==='sq'||(this.mode==='castle'&&(this.allTalked()||Clock.t<.56)))&&this.state!=='dialogue'&&this.state!=='wait');
+    parts.forEach(p=>p.update(dt));
+    for(let i=parts.length-1;i>=0;i--)if(parts[i].life<=0)parts.splice(i,1);
+    if(this.room==='garden'){
+      if(Math.random()<.4)parts.push(new Particle(W/2+rnd(-4,4),A.y1-28,rnd(-26,26),rnd(-60,-25),.9,'#bfe3f5',1.6,170));
+      if(Math.random()<.05)parts.push(new Particle(rnd(0,W),-5,rnd(10,30),rnd(20,40),rnd(5,8),'#eab8c8',2));
+    }else BR.forEach(b=>{if(Math.random()<.12)parts.push(new Particle(b.x+rnd(-5,5),b.y-36,rnd(-12,12),rnd(-90,-50),rnd(.7,1.3),'#ffb347',1.7))});
+    if(this.mode==='escape')this.props.forEach(q=>{if(q[0]==='fire'&&Math.random()<.5)parts.push(new Particle(q[1]+rnd(-8,8),q[2]-30,rnd(-14,14),rnd(-90,-40),rnd(.8,1.6),Math.random()<.5?'#ff9a3a':'#5a5a5a',rnd(2,4)))});
+    const p=this.player,b=this.boss;
+    if(['fight','explore','win','lose'].includes(this.state)){
+      p.update(dt,b);b.update(dt,p);
+      const dx=p.x-b.x,dy=p.y-b.y,d=Math.hypot(dx,dy)||1,min=p.r+b.r+4;
+      if(d<min&&!b.dead&&!p.dead&&p.dashT<=0){p.x+=dx/d*(min-d);p.y+=dy/d*(min-d);bounds(p)}
+      if((this.mode==='tutorial'||this.mode==='train')&&this.state==='fight')Tut.update(dt);
+      if(this.mode!=='tutorial'&&this.mode!=='train'&&this.mode!=='scene'&&this.state==='explore')this.castleUpdate(dt);
+    }
+    if(this.state==='win'||this.state==='lose'){
+      this.endT-=dt;
+      if(this.endT<=0){const w=this.state==='win';this.state='wait';if(w)this.afterBoss();else transition(()=>this.retry())}
+    }
+    // HUD
+    $('hp').style.width=p.hp/p.maxHp*100+'%';$('hpt').textContent=Math.ceil(p.hp)+' / '+p.maxHp;
+    $('st').style.width=p.st/p.maxSt*100+'%';$('clock').textContent=Clock.label();$('bonus').textContent=this.dmgBonus?'Treino com Artur: +'+this.dmgBonus+' de dano':'';
+    const cb=this.combat;this.saveFlash=Math.max(0,(this.saveFlash||0)-dt);
+    setSlot('lmb',cb?(p.st<6?1:0):.65,p.atk&&p.atk.type==='light');
+    setSlot('rmb',cb?(p.st<=0?1:0):.65,p.block);
+    setSlot('shift',cb?(p.st<28?1:0):.65,p.atk&&p.atk.type==='heavy');
+    setSlot('dash',cb?Math.max(p.dashCd/.7,p.st<20?1:0):.65,p.dashT>0);
+    setSlot('save',0,this.saveFlash>0);
+    setSlot('talk',this.nearNpc?0:.65,this.nearNpc);
+    S.venda.style.display=this.venda?'flex':'none';setSlot('venda',cb?0:.65,this.blind);
+    S.diario.style.display=this.mode==='sq'?'flex':'none';setSlot('diario',0,Journal.on);
+    {const tr=$('trophies'),on=this.mode==='mission'||this.mode==='sq'||this.mode==='return';tr.style.display=on?'block':'none';
+     if(on)tr.textContent=['Cabeça de Medusa','Corrente de Cérbero','Chifres do Minotauro'].map(t=>(this.trophies.includes(t)?'◆ ':'◇ ')+t).join('\n');
+     $('track').textContent=this.mode==='sq'?this.trackText():''}
+  },
+  render(){
+    if(this.mode==='scene'){Scene.render();return}
+    const p=this.player,b=this.boss,s=this.shake;
+    ctx.save();ctx.clearRect(0,0,W,H);
+    ctx.translate(rnd(-s,s),rnd(-s,s));
+    const tut=this.mode==='tutorial',R=ROOMS[this.room];
+    if(R.sky&&!tut)drawSky(R);
+    ctx.drawImage(tut?BGG:ROOM_BG[this.room],0,0);
+    if(!R.outdoor)drawWindows(R);
+    b.drawTele();
+    const list=tut?[]:BR.map(r=>({y:r.y,f:()=>drawBrazier(r)})).concat(this.props.map(q=>({y:q[2],f:()=>drawProp(q[0],q[1],q[2],q[4])})),this.npcs.map(n=>({y:n.y,f:()=>n.draw()})),(this.mode==='helia'?this.harpies:[]).map(h=>({y:h.y,f:()=>drawHarpy(h)})),(this.mode==='escape'&&this.room==='gate'&&!this.armed?[{y:400,f:drawSwordItem}]:[]),(this.mode==='sq'?this.questObjs().map(o=>({y:o.y,f:()=>drawQObj(o)})):[]));
+    list.push({y:p.y,f:()=>drawPlayer(p)},{y:b.y,f:()=>drawBoss(b)});
+    list.sort((u,v)=>u.y-v.y).forEach(o=>o.f());
+    drawSlashes(p,b);
+    parts.forEach(pt=>pt.draw(ctx));
+    R.outdoor?gardenLight(p,this.lightList()):lighting(p,this.fireLights());
+    if(this.mode==='escape'){ctx.fillStyle='rgba(120,30,10,.26)';ctx.fillRect(0,0,W,H)}
+    if(R.shade){ctx.fillStyle=`rgba(4,14,8,${R.shade})`;ctx.fillRect(0,0,W,H)}
+    if(this.blind){const bg=ctx.createRadialGradient(p.x,p.y-20,70,p.x,p.y-20,230);bg.addColorStop(0,'rgba(0,0,0,0)');bg.addColorStop(1,'rgba(0,0,0,.94)');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H)}
+    if(this.room==='gate'&&this.mode==='castle'){ctx.globalCompositeOperation='lighter';const gg=ctx.createRadialGradient(700,A.y1-30,5,700,A.y1-30,200);gg.addColorStop(0,'rgba(200,255,150,.35)');gg.addColorStop(1,'rgba(200,255,150,0)');ctx.fillStyle=gg;ctx.fillRect(0,0,W,H);ctx.globalCompositeOperation='source-over'}
+    ctx.restore();
+    if(b.bars)drawBossBars(b);
+    if(this.msgT>0){ctx.globalAlpha=Math.min(1,this.msgT*2);ctx.textAlign='center';ctx.font='700 26px Cinzel,Georgia,serif';ctx.fillStyle='#ffd98a';ctx.shadowColor='#000';ctx.shadowBlur=8;ctx.fillText(this.msg,W/2,110);ctx.shadowBlur=0;ctx.globalAlpha=1}
+    if(this.state==='lose'){
+      ctx.textAlign='center';ctx.shadowColor='#000';ctx.shadowBlur=12;
+      ctx.font='700 40px Cinzel,Georgia,serif';ctx.fillStyle=this.result==='win'?'#c8a15a':'#a3262a';
+      ctx.fillText(this.result==='win'?'PROVA CONCLUÍDA':'VOCÊ CAIU',W/2,H/2-20);
+      if(this.state==='end'){ctx.font='italic 18px Georgia,serif';ctx.fillStyle='#e8dcc0';ctx.fillText('Pressione R para recomeçar',W/2,H/2+14)}
+      ctx.shadowBlur=0;
+    }
+  }
+};
+
+/* ============ ARTUR (Capitão da Guarda Real) ============ */
+const PAL_A={armor:'#4a6a9a',trim:'#e0bb62',cape:'#244a86',skin:'#d2a27c',hair:'#6a4a2a',leg:'#262a35',eye:'#222'};
+class Artur extends Boss{
+  reset(){super.reset();Object.assign(this,{x:W/2+150,y:230,r:16,hp:110,maxHp:110,ghost:110,pal:PAL_A,spear:false,name:'CAPITÃO ARTUR',mode:'idle',bars:false,dmgMul:.7,cdMul:2,noPhase:true,cd:1.6})}
+  get spd(){return .6}
+  get m(){return 1.5}
+  get immune(){return this.mode!=='fight'}
+  update(dt,p){
+    if(this.state==='move'&&this.mode!=='fight'){
+      this.ghost+=(this.hp-this.ghost)*Math.min(1,dt*2.5);
+      const dx=p.x-this.x,dy=p.y-this.y,d=Math.hypot(dx,dy)||1;this.face=Math.atan2(dy,dx);this.moving=false;
+      if(this.mode==='demo'){
+        if(d>98){this.x+=dx/d*150*dt;this.y+=dy/d*150*dt;this.moving=true;this.walkT+=dt;bounds(this)}
+        else{this.cd-=dt;if(this.cd<=0){this.begin('swing');this.cd=2.4}}
+      }
+      return;
+    }
+    super.update(dt,p);
+  }
+  onDeath(){this.dead=false;this.hp=0;this.state='stun';this.stunT=99;this.atk=null;Tut.complete()}
+}
+
+/* ============ JARDIM DO CASTELO (cenário do tutorial) ============ */
+function buildBGG(){
+  const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+  g.fillStyle='#101a10';g.fillRect(0,0,W,H);
+  for(let y=0,row=0;y<A.y1+8;y+=24,row++)for(let x=-(row%2)*34;x<W;x+=68){const l=104+Math.random()*26;g.fillStyle=`rgb(${l+16},${l+4},${l-16})`;g.fillRect(x+1,y+1,66,22)}
+  [150,340,620,810].forEach(x=>{g.fillStyle='#2b3b57';g.beginPath();g.moveTo(x-24,A.y1-8);g.lineTo(x-24,A.y1-52);g.arc(x,A.y1-52,24,Math.PI,0);g.lineTo(x+24,A.y1-8);g.closePath();g.fill();g.strokeStyle='#6a5a44';g.lineWidth=4;g.stroke()});
+  [245,715].forEach(x=>{g.fillStyle='#244a86';g.fillRect(x-14,6,28,64);g.beginPath();g.moveTo(x-14,70);g.lineTo(x,86);g.lineTo(x+14,70);g.fill();g.fillStyle='#d6b25e';g.beginPath();g.arc(x,34,7,0,7);g.fill()});
+  const fl=[[A.x1+A.inset,A.y1],[A.x2-A.inset,A.y1],[A.x2,A.y2],[A.x1,A.y2]];
+  const path=()=>{g.beginPath();fl.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.closePath()};
+  let gr=g.createLinearGradient(0,A.y1,0,A.y2);gr.addColorStop(0,'#38582e');gr.addColorStop(1,'#648f3f');
+  path();g.fillStyle=gr;g.fill();g.save();path();g.clip();
+  for(let i=0;i<1800;i++){const x=rnd(A.x1,A.x2),y=rnd(A.y1,A.y2);g.strokeStyle=Math.random()<.5?'rgba(20,50,15,.35)':'rgba(170,210,110,.25)';g.beginPath();g.moveTo(x,y);g.lineTo(x+rnd(-2,2),y-rnd(3,7));g.stroke()}
+  g.fillStyle='#a8977c';g.beginPath();g.moveTo(W/2-62,A.y1);g.lineTo(W/2+62,A.y1);g.lineTo(W/2+104,A.y2);g.lineTo(W/2-104,A.y2);g.fill();
+  g.strokeStyle='rgba(60,45,30,.45)';g.lineWidth=1.5;
+  for(let i=1;i<9;i++){const y=A.y1+(A.y2-A.y1)*i/9,hw=62+42*i/9;g.beginPath();g.moveTo(W/2-hw,y);g.lineTo(W/2+hw,y);g.stroke()}
+  g.save();g.translate(W/2,330);g.scale(1,.46);g.fillStyle='rgba(196,168,108,.38)';g.beginPath();g.arc(0,0,200,0,7);g.fill();g.strokeStyle='rgba(90,66,36,.55)';g.lineWidth=4;g.stroke();g.restore();
+  for(let i=0;i<150;i++){const x=rnd(A.x1,A.x2),y=rnd(A.y1+20,A.y2);if(Math.abs(x-W/2)<110)continue;
+    g.fillStyle=['#d94a5a','#f2d15b','#f4f0e8','#a87ad9'][i%4];g.beginPath();g.arc(x,y,rnd(1.8,3.2),0,7);g.fill();g.fillStyle='#f2c84a';g.beginPath();g.arc(x,y,.9,0,7);g.fill()}
+  g.restore();
+  [[A.x1+40,A.y1+60],[A.x2-40,A.y1+60],[A.x1+30,A.y2-30],[A.x2-30,A.y2-30]].forEach(([x,y])=>{
+    g.fillStyle='rgba(0,0,0,.3)';g.beginPath();g.ellipse(x,y+10,34,10,0,0,7);g.fill();
+    g.fillStyle='#1f4a24';g.beginPath();g.ellipse(x,y,32,20,0,0,7);g.fill();g.fillStyle='#2d6a32';g.beginPath();g.ellipse(x-6,y-6,22,13,0,0,7);g.fill();
+    for(let k=0;k<9;k++){g.fillStyle='#c93a4a';g.beginPath();g.arc(x+rnd(-24,24),y+rnd(-12,10),3,0,7);g.fill()}});
+  const fx=W/2,fy=A.y1+16; // fonte
+  g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.ellipse(fx,fy+16,84,24,0,0,7);g.fill();
+  g.fillStyle='#8f887b';g.beginPath();g.ellipse(fx,fy+8,76,24,0,0,7);g.fill();g.fillRect(fx-76,fy-6,152,14);
+  g.fillStyle='#a79f90';g.beginPath();g.ellipse(fx,fy-6,76,24,0,0,7);g.fill();
+  g.fillStyle='#5f9cc2';g.beginPath();g.ellipse(fx,fy-6,64,18,0,0,7);g.fill();
+  g.fillStyle='#8f887b';g.fillRect(fx-8,fy-44,16,40);g.fillStyle='#a79f90';g.beginPath();g.ellipse(fx,fy-44,28,9,0,0,7);g.fill();
+  g.fillStyle='#7fb8d8';g.beginPath();g.ellipse(fx,fy-45,22,6,0,0,7);g.fill();
+  [250,710].forEach(x=>{const y=A.y1+4;g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.ellipse(x,y+4,26,8,0,0,7);g.fill();g.fillStyle='#8f887b';g.fillRect(x-18,y-22,36,24);g.fillStyle='#b9b2a4';g.fillRect(x-9,y-62,18,42);g.beginPath();g.arc(x,y-70,9,0,7);g.fill();g.fillStyle='#a79f90';g.fillRect(x-20,y-54,12,5);g.fillRect(x+8,y-54,12,5);g.fillStyle='#d6d0c2';g.fillRect(x+16,y-90,3,36)});
+  [[A.x1+A.inset,A.y1,A.x1,A.y2],[A.x2-A.inset,A.y1,A.x2,A.y2]].forEach(([ax,ay,bx,by])=>{for(let k=0;k<=12;k++){const f=k/12,x=lerp(ax,bx,f),y=lerp(ay,by,f),h=16*(.7+f*.5);g.fillStyle='#9a8e7a';g.fillRect(x-7,y-h,14,h);g.fillStyle='#bbb09a';g.fillRect(x-7,y-h,14,3)}});
+  path();g.strokeStyle='#8a7860';g.lineWidth=3;g.stroke();
+  gr=g.createLinearGradient(0,A.y2,0,A.y2+44);gr.addColorStop(0,'#6b5f4f');gr.addColorStop(1,'#241d16');
+  g.fillStyle=gr;g.beginPath();g.moveTo(A.x1,A.y2);g.lineTo(A.x2,A.y2);g.lineTo(A.x2+14,A.y2+44);g.lineTo(A.x1-14,A.y2+44);g.fill();
+  g.fillStyle='#120e0a';g.fillRect(0,A.y2+44,W,H);
+  return c;
+}
+/* ============ RELÓGIO DO MUNDO (CICLO DIA / NOITE) ============ */
+const Clock={
+  t:.05,len:200,cur:null,
+  K:[[0,[255,214,160],.14,0],[.2,[255,236,204],.06,0],[.36,[255,250,232],.02,0],[.52,[255,228,170],.08,0],[.6,[255,120,50],.3,.3],[.68,[150,60,90],.42,.6],[.76,[14,22,70],.62,1],[.92,[10,16,56],.64,1],[1,[255,214,160],.14,0]],
+  sample(){
+    const t=this.t,K=this.K;let i=0;while(i<K.length-2&&t>=K[i+1][0])i++;
+    const a=K[i],b=K[i+1],f=(t-a[0])/(b[0]-a[0]);
+    return{c:a[1].map((v,k)=>Math.round(lerp(v,b[1][k],f))),a:lerp(a[2],b[2],f),dark:lerp(a[3],b[3],f)};
+  },
+  step(dt,adv){if(adv)this.t=(this.t+dt/this.len)%1;this.cur=this.sample()},
+  label(){const t=this.t;return t<.3?'☀ Manhã':t<.55?'☀ Tarde':t<.72?'◐ Anoitecer':'☾ Noite'}
+};
+Clock.cur=Clock.sample();
+const STARS=Array.from({length:60},(_,i)=>[(i*97)%W,(i*53)%110,1+(i%3)*.5]);
+function drawSky(R){ // sol e lua cruzam o céu ao longo do dia
+  const sk=R.sky,dk=Clock.cur.dark,t=Clock.t;
+  let g=ctx.createLinearGradient(0,0,0,A.y1+30);g.addColorStop(0,sk[0]);g.addColorStop(1,sk[1]);ctx.fillStyle=g;ctx.fillRect(0,0,W,A.y1+30);
+  if(dk>0){ctx.fillStyle=`rgba(4,8,28,${dk*.93})`;ctx.fillRect(0,0,W,A.y1+30);ctx.fillStyle=`rgba(255,255,240,${dk})`;STARS.forEach(q=>ctx.fillRect(q[0],q[1],q[2],q[2]))}
+  const u=t/.68;
+  if(u>=0&&u<=1){const x=lerp(70,W-70,u),hh=Math.sin(Math.PI*u),y=126-hh*98;
+    g=ctx.createRadialGradient(x,y,4,x,y,80);g.addColorStop(0,`rgba(255,${(lerp(140,235,hh))|0},${(lerp(60,170,hh))|0},.55)`);g.addColorStop(1,'rgba(255,200,120,0)');ctx.fillStyle=g;ctx.fillRect(x-80,y-80,160,160);
+    ctx.fillStyle=`rgb(255,${(lerp(150,245,hh))|0},${(lerp(70,180,hh))|0})`;ctx.beginPath();ctx.arc(x,y,17,0,7);ctx.fill()}
+  const tt=t<.1?t+1:t,v=(tt-.56)/.5;
+  if(v>=0&&v<=1){const x=lerp(70,W-70,v),y=126-Math.sin(Math.PI*v)*86;
+    g=ctx.createRadialGradient(x,y,4,x,y,60);g.addColorStop(0,'rgba(200,215,255,.4)');g.addColorStop(1,'rgba(200,215,255,0)');ctx.fillStyle=g;ctx.fillRect(x-60,y-60,120,120);
+    ctx.fillStyle='#e6ebf5';ctx.beginPath();ctx.arc(x,y,13,0,7);ctx.fill();ctx.fillStyle='rgba(150,160,185,.5)';ctx.beginPath();ctx.arc(x-4,y-3,3,0,7);ctx.arc(x+4,y+4,2.2,0,7);ctx.fill()}
+}
+function drawWindows(R){ // janelas do castelo acompanham o céu
+  const s=Clock.cur,al=Math.min(.92,s.a*1.5);if(al<.06)return;
+  ctx.fillStyle=`rgba(${s.c[0]},${s.c[1]},${s.c[2]},${al})`;
+  (R.windows||[]).forEach(x=>{ctx.beginPath();ctx.moveTo(x-24,A.y1-10);ctx.lineTo(x-24,A.y1-62);ctx.arc(x,A.y1-62,24,Math.PI,0);ctx.lineTo(x+24,A.y1-10);ctx.fill()});
+}
+function gardenLight(p,L){
+  const s=Clock.cur,day=1-s.dark;
+  ctx.globalCompositeOperation='lighter';
+  const g=ctx.createLinearGradient(0,0,W,H);g.addColorStop(0,`rgba(255,225,150,${.16*day})`);g.addColorStop(.5,`rgba(255,225,150,${.04*day})`);g.addColorStop(1,'rgba(255,225,150,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.globalCompositeOperation='source-over';
+  ctx.fillStyle=`rgba(${s.c[0]},${s.c[1]},${s.c[2]},${s.a})`;ctx.fillRect(0,0,W,H);
+  const v=ctx.createRadialGradient(p.x,p.y-20,160,p.x,p.y-20,640);v.addColorStop(0,'rgba(8,16,8,0)');v.addColorStop(1,`rgba(8,14,10,${.5+.25*s.dark})`);
+  ctx.fillStyle=v;ctx.fillRect(0,0,W,H);
+  const k=clamp((s.dark-.25)/.5,0,1);
+  if(L&&k>0){ // postes, janelas e lanternas acendem ao anoitecer
+    ctx.globalCompositeOperation='lighter';
+    L.forEach(([x,y,r])=>{const f=1,q=ctx.createRadialGradient(x,y,2,x,y,r*f);q.addColorStop(0,`rgba(255,190,100,${.6*k})`);q.addColorStop(1,'rgba(255,150,60,0)');ctx.fillStyle=q;ctx.fillRect(x-r,y-r,r*2,r*2)});
+    ctx.globalCompositeOperation='source-over';
+  }
+}
+/* ============ CUTSCENE NARRATIVA (PRÓLOGO) ============ */
+const CUTT=[
+ 'Houve um tempo em que o reino de Aroer era a luz do mundo conhecido. Sob o reinado justo do Rei Aldren, suas torres douradas se erguiam sobre colinas verdes, e o estandarte real era visto a léguas de distância.',
+ 'As colheitas eram fartas, as estradas, seguras, e os mercados, cheios de vozes vindas de todos os cantos. Em Aroer ninguém dormia com fome, e os portões do castelo estavam abertos a quem trouxesse uma causa justa.',
+ 'Elfos, anões, homens e povos de terras distantes mantinham com a coroa um frágil equilíbrio, feito de acordos, respeito e palavra dada. O Rei Aldren sabia que a paz não é um presente, mas uma obra que se refaz todos os dias.',
+ 'Era nesse reino que crescia o jovem príncipe, ainda alheio ao peso da coroa. Naquela manhã, ele treinaria no jardim do castelo sob o olhar de Artur, Capitão da Guarda Real. Depois, os salões, os corredores e as ruas de Aroer seriam todos seus para descobrir.'];
+function cutBG(a,b){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,a);g.addColorStop(1,b);ctx.fillStyle=g;ctx.fillRect(0,0,W,H)}
+function sunGlow(x,y,r,c){const g=ctx.createRadialGradient(x,y,2,x,y,r);g.addColorStop(0,c);g.addColorStop(1,'rgba(255,200,120,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H)}
+function hills(y,col,amp,ph){ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(0,H);for(let x=0;x<=W;x+=20)ctx.lineTo(x,y+Math.sin(x*.01+ph)*amp);ctx.lineTo(W,H);ctx.fill()}
+function birds(t){ctx.strokeStyle='#2a2030';ctx.lineWidth=1.6;for(let i=0;i<5;i++){const x=(t*40+i*190)%1100-70,y=110+i*24+Math.sin(t*2+i)*8,f=Math.sin(t*9+i)*4;ctx.beginPath();ctx.moveTo(x-8,y);ctx.quadraticCurveTo(x-4,y-5+f,x,y);ctx.quadraticCurveTo(x+4,y-5+f,x+8,y);ctx.stroke()}}
+function castleLit(x,y,s,t,wall,roof){
+  ctx.fillStyle=wall;ctx.fillRect(x-90*s,y-52*s,180*s,52*s);
+  [[-72,30,80],[-36,34,102],[0,42,134],[36,34,102],[72,30,80]].forEach(([dx,w,h],n)=>{
+    const tx=x+(dx-w/2)*s,ty=y-h*s;ctx.fillStyle=wall;ctx.fillRect(tx,ty,w*s,h*s);
+    ctx.fillStyle=roof;ctx.beginPath();ctx.moveTo(tx-4*s,ty);ctx.lineTo(tx+w*s/2,ty-30*s);ctx.lineTo(tx+w*s+4*s,ty);ctx.fill();
+    ctx.fillStyle='rgba(255,210,120,.9)';ctx.fillRect(tx+w*s/2-2*s,ty+14*s,4*s,9*s);
+    if(n===2){const bx=tx+w*s/2,by=ty-30*s;ctx.strokeStyle='#3a2a18';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx,by-34*s);ctx.stroke();
+      ctx.fillStyle='#b3262e';ctx.beginPath();ctx.moveTo(bx,by-34*s);
+      for(let i=0;i<=22;i+=2)ctx.lineTo(bx+i*s,by-34*s+Math.sin(t*5+i*.4)*2*s+i*.15*s);
+      ctx.lineTo(bx+22*s,by-20*s);for(let i=22;i>=0;i-=2)ctx.lineTo(bx+i*s,by-20*s+Math.sin(t*5+i*.4)*2*s);ctx.fill()}
+  });
+}
+function sc0(t){cutBG('#2f3c6e','#f4b46a');sunGlow(480,360,420,'rgba(255,225,150,.85)');hills(400,'#3b4f3a',14,1);castleLit(480,412,1.7,t,'#d9c398','#c7a14a');hills(450,'#233624',18,3);hills(512,'#16241a',12,5);birds(t)}
+function sc1(t){
+  cutBG('#6aa6d6','#f6e6b4');sunGlow(180,120,380,'rgba(255,245,200,.8)');hills(300,'#7e9a5a',10,2);castleLit(760,312,.7,t,'#cdb88c','#b7923f');
+  for(let i=0;i<14;i++){ctx.fillStyle=i%2?'#d6b24a':'#c29c36';ctx.fillRect(0,330+i*i*1.5,W,6+i*2.2)}
+  [[150,342],[300,356],[430,340]].forEach(([x,y])=>{ctx.fillStyle='#e8dcc0';ctx.fillRect(x,y,50,34);ctx.fillStyle='#8c3a2a';ctx.beginPath();ctx.moveTo(x-6,y);ctx.lineTo(x+25,y-24);ctx.lineTo(x+56,y);ctx.fill();
+    ctx.fillStyle='rgba(235,235,235,.35)';for(let k=0;k<3;k++){ctx.beginPath();ctx.arc(x+40+Math.sin(t+k)*6,y-30-k*14-(t*8%14),6+k*3,0,7);ctx.fill()}});
+  birds(t);
+}
+function sc2(t){
+  cutBG('#2a3566','#e4925a');sunGlow(480,330,360,'rgba(255,170,90,.7)');hills(380,'#2a3a30',10,4);castleLit(480,392,1.2,t,'#6d5a62','#4a3a48');hills(470,'#17211a',14,2);
+  [[250,'#8fb0d8',50,0],[360,'#6dbb8f',70,1],[480,'#c9a15a',34,2],[600,'#d98fcf',26,3],[710,'#d95a4a',30,4]].forEach(([x,c,h,k])=>{
+    const y=510;ctx.fillStyle='rgba(0,0,0,.4)';ctx.beginPath();ctx.ellipse(x,y+3,18,6,0,0,7);ctx.fill();
+    if(k===3){ctx.fillStyle='rgba(190,230,255,.55)';[-1,1].forEach(d=>{ctx.beginPath();ctx.ellipse(x+d*16,y-h-4,12,6+Math.sin(t*14)*3,d*.5,0,7);ctx.fill()})}
+    ctx.fillStyle=c;ctx.fillRect(x-9-(k===2?5:0),y-h,18+(k===2?10:0),h);
+    ctx.fillStyle='#d9b08c';ctx.beginPath();ctx.arc(x,y-h-8,9,0,7);ctx.fill();
+    if(k===1){ctx.beginPath();ctx.moveTo(x-9,y-h-8);ctx.lineTo(x-18,y-h-14);ctx.lineTo(x-8,y-h-4);ctx.moveTo(x+9,y-h-8);ctx.lineTo(x+18,y-h-14);ctx.lineTo(x+8,y-h-4);ctx.fill()}
+    if(k===2){ctx.fillStyle='#8a4a22';ctx.fillRect(x-9,y-h+2,18,14)}
+    if(k===4){ctx.fillStyle='#c22';ctx.beginPath();ctx.moveTo(x-9,y-h-12);ctx.lineTo(x,y-h-32);ctx.lineTo(x+9,y-h-12);ctx.fill()}
+  });
+  for(let i=0;i<14;i++){const x=(i*73+Math.sin(t*.5+i)*20)%W,y=520-((t*22+i*57)%420),g=ctx.createRadialGradient(x,y,1,x,y,14);g.addColorStop(0,'rgba(255,220,140,.95)');g.addColorStop(1,'rgba(255,160,60,0)');ctx.fillStyle=g;ctx.fillRect(x-14,y-14,28,28)}
+}
+function sc3(t){
+  ctx.drawImage(BGG,0,0);
+  const pr={x:400,y:432,r:13,face:0,walkT:t,moving:false,flash:0,dead:false},ar={x:575,y:420,r:16,face:Math.PI,walkT:t,moving:false,flash:0,dead:false};
+  fighter(ar,PAL_A,{a:Math.PI-.6,ext:-4},false);
+  ctx.save();ctx.translate(pr.x,pr.y);ctx.scale(.82,.82);ctx.translate(-pr.x,-pr.y);fighter(pr,PAL_P,{a:Math.sin(t*3.2)*1,ext:0},false);ctx.restore();
+  gardenLight(pr);
+}
+const CUTS=[sc0,sc1,sc2,sc3];
+const Cut={
+  i:0,t:0,pt:0,n:0,full:'',
+  start(){this.i=0;this.t=0;this.load()},
+  load(){this.full=CUTT[this.i];this.n=0;this.pt=0;$('ct').textContent='';$('cpage').textContent='Prólogo · '+(this.i+1)+' / '+CUTT.length},
+  update(dt){this.t+=dt;this.pt+=dt;Game.t+=dt;if(this.n<this.full.length){this.n=Math.min(this.full.length,this.n+dt*36);$('ct').textContent=this.full.slice(0,this.n|0)}},
+  advance(){if(this.pt<.5)return;if(this.n<this.full.length)this.n=this.full.length;else if(this.i<CUTT.length-1){this.i++;this.load()}else toTutorial()},
+  draw(){
+    ctx.clearRect(0,0,W,H);CUTS[this.i](this.t);
+    ctx.fillStyle='#000';ctx.fillRect(0,0,W,38);ctx.fillRect(0,H-38,W,38);
+    const g=ctx.createRadialGradient(W/2,H/2,200,W/2,H/2,620);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.6)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    const f=1-this.pt*2.2;if(f>0){ctx.fillStyle=`rgba(0,0,0,${f})`;ctx.fillRect(0,0,W,H)}
+  }
+};
+
+/* ============ TUTORIAL COM O CAPITÃO ARTUR ============ */
+const art=t=>({n:'Capitão Artur',t});
+const CLOSE=[art('Excelente, Alteza! Mover-se, golpear, guardar, esquivar... o senhor aprendeu tudo numa só tarde.'),
+  art('Seu pai vai se orgulhar quando souber. Um rei não precisa ser o mais forte, apenas o mais firme.'),
+  art('Guarde o que praticamos hoje. Um dia, isso poderá valer mais do que uma coroa.'),
+  art('Seus golpes ficaram mais firmes: o treino já mostra no seu braço. Agora vá, o castelo é seu para explorar. Converse com quem encontrar, todo morador de Aroer tem algo a ensinar.')];
+const Tut={
+  i:-1,cnt:0,moved:0,px:0,py:0,act:false,delay:0,lt:'',
+  steps:[
+    {lines:[art('Alteza, toda espada começa nos pés. Mova-se pelo jardim com W, A, S, D.')],
+     txt:()=>'Mova-se com W A S D',prog:()=>Tut.moved/320,done:()=>Tut.moved>=320},
+    {lines:[art('Bom. Agora o golpe: aperte o botão esquerdo do mouse três vezes.'),art('Atenção: o golpe vai para onde o seu corpo está virado, não para onde o mouse aponta. Para virar, caminhe naquela direção.')],
+     txt:()=>'Ataque leve: '+Math.min(Tut.cnt,3)+' / 3 (botão esquerdo)',prog:()=>Tut.cnt/3,done:()=>Tut.cnt>=3,ev(n){if(n==='light')Tut.cnt++}},
+    {lines:[art('Agora a defesa. Vou atacar o senhor. Segure o botão direito do mouse, virado para mim, e bloqueie o golpe.')],
+     start(){Game.inst.mode='demo';Game.inst.cd=.5},
+     txt:()=>'Segure o botão direito e bloqueie o golpe',prog:()=>Tut.cnt,done:()=>Tut.cnt>=1,ev(n){if(n==='block')Tut.cnt=1}},
+    {lines:[art('Muito bem! Mas nem todo golpe se bloqueia. Para escapar, use a esquiva: aperte Espaço andando na direção desejada.')],
+     txt:()=>'Esquive com a Barra de Espaço',prog:()=>Tut.cnt,done:()=>Tut.cnt>=1,ev(n){if(n==='dash')Tut.cnt=1}},
+    {lines:[art('Chega de lições soltas. Um combate amistoso! Use tudo o que aprendeu, e também o golpe pesado com SHIFT esquerdo.'),art('Vou pegar leve... um pouco.')],
+     start(){const a=Game.inst;a.mode='fight';a.bars=true;a.cd=1},
+     txt:()=>'Combate de teste: derrote Artur',prog:()=>1-Game.inst.hp/Game.inst.maxHp,done:()=>false}
+  ],
+  begin(){this.i=-1;this.act=false;this.delay=0;this.next()},
+  next(){
+    this.i++;const s=this.steps[this.i];
+    if(!s){this.end();return}
+    this.cnt=0;this.moved=0;this.act=false;$('obj').classList.remove('on');
+    Game.state='dialogue';
+    Dlg.say(s.lines,true,()=>{
+      Game.state='fight';this.act=true;this.px=Game.player.x;this.py=Game.player.y;this.lt='';
+      if(s.start)s.start();$('obj').classList.add('on');
+    });
+  },
+  ev(n){const s=this.steps[this.i];if(this.act&&s&&s.ev)s.ev(n)},
+  update(dt){
+    if(this.delay>0){this.delay-=dt;if(this.delay<=0)this.next();return}
+    if(!this.act)return;
+    const p=Game.player,s=this.steps[this.i];
+    p.hp=Math.min(p.maxHp,p.hp+8*dt);if(p.hp<30)p.hp=30; // luta amistosa: o príncipe não cai
+    this.moved+=Math.hypot(p.x-this.px,p.y-this.py);this.px=p.x;this.py=p.y;
+    const tx=s.txt();if(tx!==this.lt){$('ot').textContent=tx;this.lt=tx}
+    $('op').style.width=clamp(s.prog(),0,1)*100+'%';
+    if(s.done())this.complete();
+  },
+  complete(){
+    if(!this.act)return;
+    this.act=false;$('obj').classList.remove('on');Game.flashMsg('LIÇÃO CONCLUÍDA');this.delay=.9;
+    const a=Game.inst;a.mode='idle';
+    if(this.i<this.steps.length-1){a.atk=null;a.state='move'}
+  },
+  end(){Game.state='dialogue';Dlg.say(this.close||CLOSE,true,this.done||(()=>{Game.dmgBonus=4;toCastle()}))}
+};
+Tut.stepsA=Tut.steps;
+
+/* ============ CASTELO DE AROER (exploração semiaberta) ============ */
+function qg(room,x,y,name,quest,c){return{room,x,y,name,quest,sqOnly:true,pal:{armor:c[0],trim:c[1],cape:c[2],skin:c[3],hair:c[4],leg:c[5],eye:'#222'},lines:['']}}
+const ROOMS={
+ hall:{name:'Salão do Trono',area:'castle',doors:[{x:800,to:'gallery',sx:120,label:'Galeria Real'}],torches:[[150,250],[810,250],[150,490],[810,490]],pillars:[[230,215],[730,215],[230,440],[730,440]],carpet:'v',banners:[190,320,640],windows:[250,710],throne:true},
+ gallery:{name:'Galeria Real',area:'castle',doors:[{x:120,to:'hall',sx:800,label:'Salão do Trono'},{x:330,to:'library',sx:480,label:'Biblioteca Real'},{x:630,to:'kitchen',sx:160,label:'Cozinha'},{x:840,to:'gate',sx:160,label:'Pátio do Portão'}],torches:[[230,250],[730,250],[160,490],[800,490]],pillars:[[400,230],[560,230],[300,440],[660,440]],carpet:'h',banners:[],windows:[480]},
+ library:{name:'Biblioteca Real',area:'castle',doors:[{x:480,to:'gallery',sx:330,label:'Galeria Real'}],shelves:[130,250,370,590,710,830],torches:[[200,260],[760,260],[200,490],[760,490]],pillars:[[300,440],[660,440]],carpet:'v',carpetCol:'#1f3a30',banners:[],windows:[]},
+ kitchen:{name:'Cozinha Real',area:'castle',doors:[{x:160,to:'gallery',sx:630,label:'Galeria Real'}],hearth:true,torches:[[300,250],[660,250],[160,490],[810,490]],pillars:[[250,440],[710,440]],carpet:'h',carpetCol:'#4a3a2c',banners:[],windows:[]},
+ gate:{name:'Pátio do Portão',area:'castle',doors:[{x:160,to:'gallery',sx:840,label:'Galeria Real'},{x:400,to:'garden',sx:810,label:'Jardim Real'},{x:700,to:'aroer',sx:160,label:'Portões do Castelo',gate:true,c1:'#ffe9a8',c2:'#c28a3a'}],torches:[[330,250],[560,250],[150,490],[810,490]],pillars:[[250,440],[710,440]],carpet:'v',banners:[270,550],windows:[]},
+ garden:{name:'Jardim do Castelo',area:'castle',outdoor:true,doors:[{x:810,to:'gate',sx:400,label:'Pátio do Portão'}],props:[['lamp',330,215,6],['lamp',630,215,6]]},
+ aroer:{name:'Aroer: Campos e Feira',area:'aroer',outdoor:true,sky:['#6fa8dc','#f6e7b0'],lights:[[60,48,45],[260,48,45]],doors:[{x:160,to:'gate',sx:700,label:'Portões do Castelo',gate:true,c1:'#2a2030',c2:'#0e0a12'}],
+  props:[['barn',210,262,46],['hay',120,425,16],['hay',165,450,14],['cow',250,420,14],['cow',315,458,14],['cow',200,478,14],['fence',230,388,5],['fence',290,388,5],['fence',350,388,5],['scarecrow',130,340,10],
+   ['well',470,300,18],['stall',420,360,30,'spice'],['stall',540,360,30,'cloth'],['stall',650,300,30,'fruit'],['cart',380,472,22],['crate',432,484,10],['barrel',590,474,12],['lamp',360,300,6],['lamp',570,440,6],['lamp',470,470,6],
+   ['house',745,250,38],['inn',810,330,48],['forge',800,470,34],['lamp',700,400,6],['tree',90,495,16],['tree',885,505,16]]},
+ vila:{name:'Vila do Exílio',area:'village',mode:'village',outdoor:true,sky:['#78acd8','#f4e2b4'],doors:[{x:820,to:'bosque1',sx:150,sy:470,label:'Trilha do Bosque',c1:'#bfe0a0',c2:'#4a7a3a',needs:'alert'}],
+  props:[['hut',200,300,36],['hut',360,262,36],['hut',700,282,36],['hut',860,372,36],['well',500,410,18],['campfire',480,330,12],['hen',320,448,6],['hen',600,466,6],['hay',250,444,16],['fence',150,420,5],['tree',90,486,16],['tree',885,492,16],['tree',600,236,16]]},
+ bosque1:{name:'Bosque de Transição',area:'forest',mode:'forest',outdoor:true,shade:.3,doors:[{x:820,to:'bosque2',sx:130,sy:330,label:'Trilha',c1:'#d8e8a8',c2:'#4a6a3a'}],enter(){Clock.t=.62;Clock.step(0,false)},
+  props:genTrees(11,(x,y)=>distSeg(x,y,150,490,830,125)>80)},
+ bosque2:{name:'Bosque de Transição',area:'forest',mode:'forest',outdoor:true,shade:.3,doors:[{side:'R',y1:220,y2:430,to:'helia',sx:110,sy:400}],
+  props:genTrees(23,(x,y)=>Math.abs(y-(330+Math.sin(x*.012)*45))>78)},
+ helia:{name:'Eleutéria (Cidade Principal)',area:'helia',outdoor:true,sky:['#6fb0e8','#f7e8c0'],enter(){Game.enterHelia()},
+  doors:[{x:120,to:'periferia',sx:800,label:'Periferia',needs:'sq'},{x:330,to:'quiron',sx:780,label:'Acampamento de Quíron',needs:'sq',mode:'sq'},{x:600,to:'monte',sx:160,label:'Oros',needs:'sq'},{x:830,to:'porto',sx:160,label:'Thalassa',needs:'sq'}],
+  props:[['col',190,330,14],['col',770,330,14],['col',190,470,14],['col',770,470,14]]},
+ porto:{name:'Thalassa (Cidade Portuária)',area:'helia',outdoor:true,og:'porto',sky:['#6fb0e8','#f7e8c0'],doors:[{x:160,to:'helia',sx:830,label:'Eleutéria',needs:'sq'},{x:480,to:'cav_marinha',sx:480,label:'Caverna Marinha',needs:'sq'},{x:800,to:'cav_ferro',sx:480,label:'Caverna de Ferro-Espelho',needs:'sq'}],
+  props:[['inn',250,300,48],['boat',720,290,34],['crate',420,330,10],['barrel',445,338,12],['lamp',360,430,6],['lamp',640,430,6],['stall',560,400,30,'cloth'],['cart',330,478,22]]},
+ monte:{name:'Oros (Cidade Montanhosa)',area:'helia',outdoor:true,og:'monte',sky:['#7fb0e0','#f4e6c0'],doors:[{x:160,to:'helia',sx:600,label:'Eleutéria',needs:'sq'},{x:480,to:'ginasio',sx:480,label:'Ginásio Tradicionalista',needs:'sq'}],
+  props:[['house',260,290,38],['house',700,300,38],['lamp',420,420,6],['lamp',560,420,6],['rubble',350,470,10],['tree',90,490,16],['tree',880,490,16]]},
+ periferia:{name:'Periferia de Eleutéria',area:'helia',outdoor:true,og:'periferia',sky:['#6fb0e8','#f7e8c0'],doors:[{x:160,to:'selvagem',sx:480,label:'Áreas Selvagens',needs:'sq'},{x:360,to:'cav_aranhas',sx:480,label:'Caverna das Aranhas',needs:'sq'},{x:560,to:'arredores',sx:480,label:'Arredores do Labirinto',needs:'sq'},{x:800,to:'helia',sx:120,label:'Eleutéria',needs:'sq'}],
+  props:[['col',300,300,14],['col',370,300,14],['rubble',450,420,10],['rubble',700,300,10],['tree',90,490,16],['tree',880,490,16],['tree',420,490,16],['lamp',700,430,6]]},
+ selvagem:{name:'Áreas Selvagens',area:'helia',outdoor:true,og:'selvagem',shade:.25,sky:['#5a8ab0','#d8d0a0'],doors:[{x:480,to:'periferia',sx:160,label:'Periferia',needs:'sq'}],props:genTrees(31,(x,y)=>Math.hypot(x-480,y-340)>140)},
+ arredores:{name:'Arredores do Labirinto',area:'helia',outdoor:true,og:'arredores',sky:['#7fa0c8','#e8d8b0'],doors:[{x:480,to:'periferia',sx:560,label:'Periferia',needs:'sq'}],
+  props:[['blk',250,300,24],['blk',300,300,24],['blk',680,300,24],['blk',730,300,24],['blk',200,440,24],['blk',760,440,24],['blk',480,480,24]]},
+ cav_marinha:{name:'Caverna Marinha',area:'helia',tone:30,fc:['#10202a','#2a4452'],carpet:'none',banners:[],windows:[],torches:[[200,260],[760,260],[200,490],[760,490]],pillars:[[300,440],[660,440]],doors:[{x:480,to:'porto',sx:480,label:'Saída',needs:'sq'}]},
+ cav_aranhas:{name:'Caverna das Aranhas',area:'helia',tone:24,fc:['#1a1618','#38302e'],carpet:'none',banners:[],windows:[],torches:[[200,260],[760,260],[480,490]],pillars:[[260,440],[700,440]],doors:[{x:480,to:'periferia',sx:360,label:'Saída',needs:'sq'}]},
+ cav_ferro:{name:'Caverna de Ferro-Espelho',area:'helia',tone:40,fc:['#262a30','#4a525c'],carpet:'none',banners:[],windows:[],torches:[[200,260],[760,260],[200,490],[760,490]],pillars:[[400,440],[560,440]],doors:[{x:480,to:'porto',sx:800,label:'Saída',needs:'sq'}]},
+ ginasio:{name:'Ginásio Tradicionalista',area:'helia',tone:80,fc:['#5a4a34','#9a8460'],carpet:'none',banners:[190,770],windows:[],torches:[[200,260],[760,260],[200,490],[760,490]],pillars:[[260,440],[700,440]],doors:[{x:480,to:'monte',sx:480,label:'Saída',needs:'sq'}]},
+ quiron:{name:'Arena de Quíron',area:'quiron',tone:62,fc:['#2a2724','#4a463f'],carpet:'none',banners:[],windows:[],torches:[[150,250],[810,250],[150,490],[810,490]],pillars:[[230,215],[730,215],[230,440],[730,440]],
+  doors:[{x:200,to:'templo',sx:480,sy:470,label:'Templo Esquecido',needs:'mission'},{x:380,to:'ruinas',sx:480,sy:470,label:'Ruínas Subterrâneas',needs:'mission'},{x:560,to:'labirinto',sx:480,sy:470,label:'Labirinto',needs:'mission'},{x:780,to:'helia',sx:330,label:'Região Helíaca',needs:'sq',mode:'sq'}]},
+ templo:{name:'Templo Esquecido',area:'quiron',boss:'medusa',tone:96,fc:['#6a665c','#b8b0a0'],carpet:'none',banners:[],windows:[],torches:[[200,260],[760,260],[200,490],[760,490]],pillars:[[300,230],[660,230],[300,440],[660,440]],doors:[{x:480,to:'quiron',sx:480,sy:440,label:'Arena de Quíron'}]},
+ ruinas:{name:'Ruínas Subterrâneas',area:'quiron',boss:'cerbero',tone:34,fc:['#1c1a18','#34302a'],carpet:'none',banners:[],windows:[],torches:[[200,260],[760,260],[200,490],[760,490]],pillars:[[260,330],[700,330]],props:[['rubble',330,430,10],['rubble',640,430,10],['rubble',480,470,10]],doors:[{x:480,to:'quiron',sx:480,sy:440,label:'Arena de Quíron'}]},
+ labirinto:{name:'Labirinto do Minotauro',area:'quiron',boss:'minotauro',tone:50,fc:['#262420','#3e3a34'],carpet:'none',banners:[],windows:[],torches:[[150,250],[810,250],[150,490],[810,490]],pillars:[],props:[['blk',220,300,24],['blk',270,300,24],['blk',700,300,24],['blk',750,300,24],['blk',240,450,24],['blk',720,450,24],['blk',480,420,24]],doors:[{x:480,to:'quiron',sx:480,sy:440,label:'Arena de Quíron'}]}
+};
+const NPC_DEFS=[
+ // ---- Castelo ----
+ {room:'hall',x:350,y:340,name:'Sir Cedric',wp:'spear',pal:{armor:'#6f7885',trim:'#c8a15a',cape:'#244a86',skin:'#d2a27c',hair:'#3a2a1a',leg:'#262a35',eye:'#222'},
+  lines:['Alteza. Hoje o salão está cheio de nobres sorridentes... e cada um deles quer alguma coisa.',
+   'A elite de Aroer sustenta a coroa, mas também a vigia: quem controla os cofres, quem comanda as tropas, quem se senta mais perto do rei.',
+   '(sussurrando) Chegue mais perto. Não repita isto a ninguém: às vezes, nem todo humano é aliado.',
+   'Mantenha os olhos abertos, jovem príncipe. Sorrisos custam pouco.']},
+ {room:'hall',x:640,y:320,name:'Dama Isolde',pal:{armor:'#7a2f55',trim:'#d6b25e',cape:'#4a1a3a',skin:'#e0bc9a',hair:'#2a1a1a',leg:'#4a1a3a',eye:'#222'},
+  lines:['Alteza, que encanto! O rei tem sorte de ter um herdeiro tão... curioso.',
+   'Nesta corte, cada cadeira à mesa do rei tem um dono, e cada dono tem um preço. O conselho decide o que o povo jamais vê.',
+   'Alianças se fazem em bailes e se desfazem em sussurros. Aprenda a ler o que não é dito, Alteza.',
+   'Sorria sempre. É a melhor armadura da corte.']},
+ {room:'gallery',x:300,y:360,name:'Zahir, o Viajante',pal:{armor:'#8a5a2a',trim:'#d6a33a',cape:'#a8442a',skin:'#b88a62',hair:'#201510',leg:'#3a2a1c',eye:'#222'},
+  lines:['Um príncipe! Perdoe os modos, Alteza, trago a poeira de meio continente nas botas.',
+   'O continente é imenso e dividido em muitas regiões, cada qual com seu povo, seus deuses e seus costumes.',
+   'Há as terras helíacas, de cidades brancas e filósofos que discutem até com os deuses. Há desertos sem fim, com pirâmides mais velhas que qualquer reino.',
+   'Há as terras nórdicas, onde a neve e o gelo nunca vão embora, e as florestas celtas, cobertas de névoa, onde os druidas não falam com forasteiros.',
+   'Poucos viajam entre elas. Mas quem viaja aprende que o mundo é muito maior que as muralhas de uma cidade.']},
+ {room:'gallery',x:660,y:380,name:'Velho Bram',pal:{armor:'#6b6b64',trim:'#8a8a80',cape:'#4a4a44',skin:'#d2a883',hair:'#f0eee8',leg:'#3a3a36',eye:'#222'},
+  lines:['Cuidado com o tapete, Alteza! Acabei de lustrar... bem, de esfregar. Os joelhos já não lustram como antes.',
+   'Sirvo neste castelo há mais anos do que o senhor tem de vida, e aprendi uma coisa: o mundo não é feito só de homens.',
+   'Há elfos, anões, goblins, trolls, fadas... e até vampiros, dizem os contos. Muitos vivem escondidos, isolados, longe dos olhos da gente humana.',
+   'Minha avó jurava ter visto uma fada na horta. Riram dela. Eu, não.']},
+ {room:'library',x:320,y:340,name:'Mestre Oswin',pal:{armor:'#5a3f6e',trim:'#c8a15a',cape:'#3b2a4a',skin:'#d9b08c',hair:'#e6e2d8',leg:'#3b2a4a',eye:'#222'},
+  lines:['Ora, Alteza! Veio à biblioteca ouvir um velho bibliotecário? Sente-se, sente-se... ou fique de pé, como os jovens preferem.',
+   'Antes de Aroer, estas terras eram feudos em guerra constante. Senhores de pedra e de fome disputavam cada colheita, cada ponte, cada poço.',
+   'Foi o Rei Aldren, seu pai, quem os reuniu, e não pela espada: pela palavra. Cada pacto firmado repousa nos arquivos deste castelo.',
+   'Guarde isto, Alteza: reinos não nascem do poder, e sim da confiança. E a confiança, uma vez rachada, é a muralha mais difícil de reconstruir.']},
+ {room:'library',x:650,y:330,name:'Aprendiz Lena',pal:{armor:'#3f5a4a',trim:'#c8a15a',cape:'#2a3a30',skin:'#e0bc9a',hair:'#8a4a2a',leg:'#2a3a30',eye:'#222'},
+  lines:['Shh... Alteza! Perdão, hábito da biblioteca. Estou catalogando bestiários antigos.',
+   'Elfos, anões, trolls, goblins... os livros descrevem de tudo. Mas a maioria dos eruditos os trata como fábulas de camponês.',
+   'Mestre Oswin diz que livro sem prova é só um conto. Eu digo que muita prova se perdeu porque ninguém quis procurar.',
+   'E há os que acreditam, mas só enxergam monstros. Pior que não acreditar é acreditar no medo.']},
+ {room:'kitchen',x:500,y:350,name:'Cozinheira Berta',pal:{armor:'#d9d0bc',trim:'#a8442a',cape:'#8a6a4a',skin:'#d9a882',hair:'#6a4a3a',leg:'#5a4a3a',eye:'#222'},
+  lines:['Saia da frente, Alteza! O assado não espera nem príncipe.',
+   'São duzentas bocas por dia neste castelo: nobres à mesa, guardas no refeitório, criados na copa. Quem alimenta o castelo conhece todos os seus segredos.',
+   'As especiarias que uso vêm de regiões tão diferentes que nem a língua é igual. E cada povo jura que o seu tempero é o certo.',
+   'Fofoca de cozinha? Ouvi que alguns nobres andam jantando às escondidas. Quando a mesa se divide, o reino também.']},
+ {room:'gate',x:360,y:340,name:'Gareth, o Veterano',wp:'spear',pal:{armor:'#4f5a4a',trim:'#9a8a6c',cape:'#5a2a24',skin:'#c79d7b',hair:'#8a8a8a',leg:'#2a2623',eye:'#222'},
+  lines:['Alteza. Vigiar um portão em tempos de paz é serviço quieto. Dá tempo de ouvir o que os homens falam.',
+   'Pergunte a dez homens se existem elfos, trolls ou fadas, e nove dirão que são lendas de taverna.',
+   'Entre os que acreditam, a divisão é feia. Uns juram que toda criatura é inimiga, e que só a lâmina resolve.',
+   'Os mais sábios pensam diferente: nem todas as criaturas são inimigas. Já vi, em campanha, homens piores que qualquer monstro dos contos.',
+   'Os Portões do Castelo, ali ao lado, dão para os campos e, mais adiante, para a feira. Volte antes do anoitecer, Alteza, e lembre-se do que ouviu hoje.']},
+ {room:'garden',x:330,y:340,name:'Capitão Artur',wp:'sword',pal:PAL_A,
+  lines:['Alteza! Veio treinar mais? Hoje me contento em vigiar as roseiras.',
+   'O senhor mudou desde a primeira lição. Os golpes estão firmes, a guarda está certa.',
+   'Mas lembre-se: o motivo pelo qual se luta importa mais que a força do braço.']},
+ {room:'garden',x:700,y:300,name:'Jardineiro Silas',pal:{armor:'#4a6a3a',trim:'#8a6a3a',cape:'#3a4a2a',skin:'#c79d7b',hair:'#c8c4b8',leg:'#3a3a2a',eye:'#222'},
+  lines:['Cuidado com as roseiras, Alteza! Esta aqui é a favorita do Rei Aldren.',
+   'Cuido deste jardim há trinta anos. Dizem os velhos que as fadas vinham dançar aqui antigamente.',
+   'Hoje ninguém mais vê nada. Mas, na primavera, as roseiras amanhecem com orvalho em círculos perfeitos... coincidência, claro.']},
+ // ---- Campos e arredores ----
+ {room:'aroer',x:200,y:355,name:'Fazendeiro Osric',pal:{armor:'#6a5a3a',trim:'#9a8a4a',cape:'#4a3a22',skin:'#c2926a',hair:'#6a5a3a',leg:'#3a3022',eye:'#222'},
+  lines:['Alteza! Cuidado onde pisa, o trigo está quase no ponto.',
+   'A terra de Aroer é escura e generosa. Dois bons invernos de chuva e a colheita deste ano será a melhor em dez.',
+   'Além do trigo, crio alguns bois e galinhas. Gado dá trabalho de manhã e de noite, mas é ele que paga o sal e as ferramentas.',
+   'Vida no campo é isto: acordar com o sol, deitar com a lua e rezar para o tempo ajudar. Terra boa pede mão, chuva e paz. Das três, a paz é a mais difícil de colher.']},
+ {room:'aroer',x:330,y:340,name:'Camponesa Wilma',pal:{armor:'#4a6a5a',trim:'#c8a15a',cape:'#3a5a4a',skin:'#d9b08c',hair:'#5a3a2a',leg:'#3a4a3a',eye:'#222'},
+  lines:['Acordo antes do sol e durmo depois da lua, Alteza. Mas não reclamo.',
+   'À noite, às vezes ouço coisas na mata ao fim dos campos. O povo diz que é o vento. Eu já nem tenho certeza.',
+   'Seu pai passou por aqui uma vez, a pé, sem guarda. Pediu um copo de água ao meu marido. Nunca esquecemos.']},
+ {room:'aroer',x:285,y:395,name:'Pastor Tomé',pal:{armor:'#7a6a4a',trim:'#8a7a5a',cape:'#5a4a32',skin:'#c79d7b',hair:'#8a7a6a',leg:'#3a3228',eye:'#222'},
+  lines:['Muu... ah, perdão, Alteza. Falo tanto com as vacas que já me confundo.',
+   'São quarenta cabeças. Dão leite para a cidade e carne para as festas do castelo. Cada uma tem nome, e não, não conto os nomes.',
+   'À noite eu as recolho no curral. Já vi sombras rondando a cerca, nada que uma tocha não afaste... por enquanto.']},
+ // ---- Feira de Aroer ----
+ {room:'aroer',x:420,y:398,name:'Mercador Hugo',pal:{armor:'#8a6a2a',trim:'#e0bb62',cape:'#6a2a2a',skin:'#c9966e',hair:'#3a2a1a',leg:'#3a2a1c',eye:'#222'},
+  lines:['Chegue, chegue, Alteza! Pimenta do litoral, canela, açafrão... especiarias de meio mundo passam por esta banca.',
+   'Desde que o Rei Aldren baixou as taxas das pontes, o comércio floresce. Troca justa é a melhor das alianças.',
+   'Os preços variam conforme o humor das estradas. Quando há paz, as caravanas chegam. Quando há boato de guerra, ninguém viaja e a feira esvazia.']},
+ {room:'aroer',x:540,y:398,name:'Mercadora Sibyl',pal:{armor:'#5a6a8a',trim:'#d6b25e',cape:'#3a4a6a',skin:'#d9b08c',hair:'#2a1a1a',leg:'#3a3a4a',eye:'#222'},
+  lines:['Tecido tingido, seda, lã de carneiro! Leve alguma coisa, Alteza, que a fome do viajante é a nossa fortuna.',
+   'De manhã chegam os carroções do campo, com leite, queijo e hortaliça. À tarde, o movimento é de ferro e tecido. À noite, só os taverneiros trabalham.',
+   'Quando o fluxo de mercadorias cai, a gente logo sente: um preço sobe aqui, uma barraca fecha ali. A feira é o pulso do reino.']},
+ {room:'aroer',x:800,y:385,name:'Estalajadeira Gilda',pal:{armor:'#a8442a',trim:'#e8dcc0',cape:'#6a3a2a',skin:'#d9a882',hair:'#7a4a2a',leg:'#4a3a2a',eye:'#222'},
+  lines:['Bem-vindo à Estalagem do Javali Dourado, Alteza! Quarto limpo, sopa quente e cerveja que nem o rei despreza.',
+   'Viajantes de todo canto passam por aqui, e cada um paga a conta com uma história. Já ouvi de tudo: de cidades brancas a desertos de pirâmides.',
+   'Só uma coisa eu não aceito: briga entre quem nem se conhece. Em noite de feira, a mesa dividida vira inimigo à toa.']},
+ {room:'aroer',x:530,y:250,name:'Guarda Ewan',wp:'spear',pal:{armor:'#6a7a8a',trim:'#9a8a6c',cape:'#3a4a5a',skin:'#d2a27c',hair:'#4a3a2a',leg:'#262a35',eye:'#222'},
+  lines:['Boa tarde, Alteza. Ronda tranquila: um bêbado na taverna, uma briga de feirantes, nada além.',
+   'Minha função é manter as ruas em paz e os portões em ordem. O povo respeita o rei, e isso facilita meu trabalho.',
+   'Só uma coisa me inquieta: tem gente nova na cidade, perguntando demais sobre o castelo. Nada que eu possa prender, mas fico de olho.']},
+ {room:'aroer',x:620,y:430,name:'Dona Marta',pal:{armor:'#8a5a6a',trim:'#c8a15a',cape:'#5a3a4a',skin:'#dcb08c',hair:'#d8d4cc',leg:'#4a3a3a',eye:'#222'},
+  lines:['Ah, o príncipe! Que a luz o guarde, Alteza. Moro aqui há quarenta anos e nunca vi Aroer tão próspera.',
+   'Meu filho serve na guarda, minha filha vende pão na feira. Vivemos bem, graças ao rei.',
+   'Dizem que há gente passando fome além das nossas fronteiras. Reze comigo para que a nossa paz dure.']},
+ {room:'aroer',x:752,y:488,name:'Ferreiro Brann',pal:{armor:'#5a4a3a',trim:'#8a6a3a',cape:'#3a2a22',skin:'#b8865e',hair:'#2a1a12',leg:'#2a2420',eye:'#222'},
+  lines:['Ferradura, dobradiça, uma espada de vez em quando. O martelo não descansa em Aroer.',
+   'Acordo com o galo, acendo a forja e só apago quando o último lampião da rua é aceso.',
+   'O melhor da minha vida? Ouvir o sino do meio-dia e saber que o jantar está na mesa e que ninguém por aqui passa fome.']},
+ // ---- Vila do exílio ----
+ {room:'vila',x:400,y:370,name:'Velha Maren',pal:{armor:'#6a5a6a',trim:'#8a7a8a',cape:'#4a3a4a',skin:'#d2a883',hair:'#e8e4dc',leg:'#3a3038',eye:'#222'},
+  lines:['Faz anos que o rei caiu, {n}, e Aroer nunca mais foi a mesma. A elite se senta em volta de um trono vazio... e quem manda de verdade ninguém vê.',
+   'Dizem que o castelo nunca foi reconstruído. Que a Ordem governa em nome de um reino que ela mesma enterrou.']},
+ {room:'vila',x:610,y:340,name:'Lenhador Bror',pal:{armor:'#5a4a32',trim:'#7a6a4a',cape:'#3a2e1e',skin:'#c2926a',hair:'#4a3a2a',leg:'#2e261c',eye:'#222'},
+  lines:['Bom dia, {n}. Trago lenha e más notícias: reinos inteiros se devoram. Elfos contra orcs lá no norte, gigantes de gelo despertando nas montanhas...',
+   'Dizem que o continente inteiro está ardendo, e que ninguém sabe quem acendeu o fogo.']},
+ {room:'vila',x:300,y:410,name:'Curandeiro Odo',pal:{armor:'#4a6a5a',trim:'#8a9a7a',cape:'#3a5a4a',skin:'#c79d7b',hair:'#9a9a90',leg:'#2a3a32',eye:'#222'},
+  lines:['Naquela noite, anos atrás, vi o céu de Aroer vermelho, mesmo daqui. Disseram que ninguém sobreviveu.',
+   'Mas você tem olhos de quem sobreviveu a alguma coisa, {n}. Não precisa me contar. Só... tome cuidado.']},
+ {room:'vila',x:700,y:410,name:'Viajante Ysa',pal:{armor:'#7a4a6a',trim:'#d6b25e',cape:'#5a2a4a',skin:'#d9b08c',hair:'#2a1a2a',leg:'#3a2a3a',eye:'#222'},
+  lines:['Passo de vila em vila e ouço de tudo. Os helíacos brigam sobre se os deuses um dia foram reis. No deserto, ninguém confia em estrangeiros.',
+   'Em toda parte o mesmo cheiro: medo. Alguém está fazendo os povos desconfiarem uns dos outros.']},
+ {room:'vila',x:480,y:420,name:'Menino Pip',pal:{armor:'#8a6a3a',trim:'#a8884a',cape:'#6a4a2a',skin:'#dcb08c',hair:'#6a4a2a',leg:'#4a3a2a',eye:'#222'},
+  lines:['Oi, {n}! Meu pai diz que você nunca conta de onde veio. Eu acho que você é um herói disfarçado!',
+   'Quando eu crescer, vou ser guarda do rei! ... mas não tem mais rei, né?']},
+ // ---- Região Helíaca: Eleutéria antes do ataque ----
+ {room:'helia',lore:true,x:330,y:330,name:'Sofista Aristo',pal:{armor:'#3f6a8a',trim:'#e8dcc0',cape:'#2a4a6a',skin:'#d9b08c',hair:'#b8b8b0',leg:'#2a4a6a',eye:'#222'},
+  lines:['Bem-vindo a Eleutéria, forasteiro {n}. Aqui discutimos tudo, até os deuses.',
+   'Seguimos Evêmero, que ensinava que os deuses nunca foram deuses: foram homens, reis e heróis de um passado remoto, a quem a memória foi dando altares.',
+   'Para nós, racionalistas, os deuses não existem. Trovão é chuva, oráculo é fumaça, e quem reza apenas fala sozinho.']},
+ {room:'helia',lore:true,x:640,y:330,name:'Sacerdotisa Kalliope',pal:{armor:'#e8e0d0',trim:'#c8a15a',cape:'#a8442a',skin:'#dcb08c',hair:'#2a1a12',leg:'#d9d0be',eye:'#222'},
+  lines:['Cuidado com o que o sofista lhe disse, {n}. Para nós, tradicionalistas, os deuses ouvem, e cobram.',
+   'Os templos nas colinas e as ruínas além dos muros são prova viva. Quem esquece os deuses não é esquecido por eles.',
+   'A cidade se divide: racionalistas de um lado, fiéis do outro. E ambos juram defender Eleutéria.']},
+ {room:'helia',lore:true,x:480,y:400,name:'Marinheiro Dimas',pal:{armor:'#2a5a8a',trim:'#e8dcc0',cape:'#1a3a5a',skin:'#b88a62',hair:'#3a2a1a',leg:'#2a3a4a',eye:'#222'},
+  lines:['Sou de Thalassa, a cidade do porto. De lá partem navios para todos os mares.',
+   'A Região Helíaca tem três grandes cidades: Eleutéria, a principal, onde estamos; Thalassa, a portuária; e Oros, a montanhosa e templária, com os santuários mais antigos.']},
+ {room:'helia',lore:true,x:250,y:420,name:'Guarda Demétrio',wp:'spear',pal:{armor:'#8a7a5a',trim:'#e0bb62',cape:'#6a3a2a',skin:'#c79d7b',hair:'#4a3a2a',leg:'#3a2a1c',eye:'#222'},
+  lines:['Vim de Oros, a cidade dos templos nas montanhas. No sopé há cavernas fundas, e dizem que existem labirintos sob as colinas.',
+   'Ruínas antigas cercam toda a região. Sob algumas delas, contam os pastores, há salões subterrâneos que nenhum mapa registra.']},
+ {room:'helia',lore:true,x:720,y:430,name:'Arqueóloga Ione',pal:{armor:'#8a6a4a',trim:'#c8a15a',cape:'#5a3a2a',skin:'#d9b08c',hair:'#6a3a2a',leg:'#4a3a2a',eye:'#222'},
+  lines:['Escavo as ruínas ao redor de Eleutéria: templos esquecidos, salões subterrâneos, um labirinto de pedra.',
+   'Há inscrições que os racionalistas chamam de poesia e os tradicionalistas de profecia. Eu apenas copio e rezo para que ninguém as queime.']},
+ {room:'helia',lore:true,x:560,y:460,name:'Menina Zoe',pal:{armor:'#c8a8d0',trim:'#e8dcc0',cape:'#a888b0',skin:'#e0bc9a',hair:'#4a2a1a',leg:'#6a5a7a',eye:'#222'},
+  lines:['Mamãe diz que os deuses estão dormindo. O professor diz que nunca existiram. Eu acho que os dois estão com medo.']},
+ // ---- Região Helíaca: doadores de missões secundárias (só após o treino com Quíron) ----
+ qg('helia',190,400,'Leandro',1,['#7a6a8a','#c8a15a','#4a3a5a','#d9b08c','#b8b0a8','#3a3a4a']),
+ qg('helia',800,380,'Sábio Dionísio',4,['#5a4a3a','#c8a15a','#3a2a1e','#d2a883','#e8e4dc','#3a2e22']),
+ qg('helia',420,350,'Orador',10,['#6a6a6a','#9a9a9a','#4a4a4a','#c79d7b','#8a8a8a','#3a3a3a']),
+ qg('porto',330,385,'Thalia',2,['#2a6a8a','#e8dcc0','#1a4a6a','#dcb08c','#2a1a12','#2a4a5a']),
+ qg('porto',760,395,'Gorgo',9,['#4a3a2a','#8a6a3a','#2a2018','#b8865e','#2a1a12','#2a2420']),
+ qg('monte',350,385,'Nikos',3,['#6a7a5a','#e0bb62','#4a5a3a','#c79d7b','#4a3a2a','#2a3a22']),
+ qg('monte',620,400,'Mestre Ariston',6,['#c9a070','#e8dcc0','#8a6a3a','#c9966e','#c8c4b8','#8a6a3a']),
+ qg('periferia',200,380,'Helena',5,['#8a5a6a','#c8a15a','#5a3a4a','#e0bc9a','#4a2a1a','#4a3a3a']),
+ qg('selvagem',480,400,'Velha Mágia',8,['#4a6a5a','#8a9a7a','#2a4a3a','#c2a07a','#d8d4cc','#2a3a32']),
+ qg('arredores',480,420,'Cassandra',7,['#7a4a6a','#d6b25e','#4a2a4a','#dcb08c','#1a1a22','#3a2a3a'])
+];
+const KING_DEF={room:'hall',x:480,y:190,name:'Rei Aldren',pal:{armor:'#7a1f26',trim:'#e0bb62',cape:'#5a1219',skin:'#d9b08c',hair:'#c8c4b8',leg:'#3a1a1a',eye:'#222'},
+  lines:['Meu filho. A noite já cobre Aroer, e o rei que não dorme cedo governa mal na manhã seguinte.',
+   'Ouvi dizer que você passou o dia entre o castelo e o povo. Isso me alegra mais do que qualquer vitória em batalha.',
+   'Lembre-se: a sabedoria não está em saber de tudo, mas em saber ouvir. E o dever de um rei é com o povo, nunca com o trono.',
+   'Um dia a coroa será sua, e ela pesa mais do que parece. Agora vá, descanse em seus aposentos. Amanhã o mundo continua nos esperando.'],
+  onEnd(){Game.startGolpe()}};
+const ARTUR_ESC={room:'gallery',x:0,y:0,name:'Capitão Artur',mute:true,blood:true,follow:true,wp:'sword',pal:PAL_A,lines:['']};
+const GUARD_DEF={room:'vila',name:'Soldado da Ordem',mute:true,wp:'spear',pal:{armor:'#3a1a22',trim:'#a3262a',cape:'#1a1014',skin:'#c79d7b',hair:'#222',leg:'#1a1a1e',eye:'#222'},lines:['']};
+class NPC{
+  constructor(o){Object.assign(this,{r:13,face:Math.PI/2,walkT:0,moving:false,flash:0,dead:false,wp:null,mute:false,follow:false,blood:false,petrified:false,lore:false,sqOnly:false,quest:0},o);this.area=ROOMS[o.room].area}
+  update(dt,p){
+    const dx=p.x-this.x,dy=p.y-this.y,d=Math.hypot(dx,dy);
+    if(this.follow){this.moving=false;if(d>84){this.x+=dx/d*230*dt;this.y+=dy/d*230*dt;this.moving=true;this.walkT+=dt;bounds(this)}this.face=Math.atan2(dy,dx);return}
+    if(d<170&&!this.petrified)this.face=Math.atan2(dy,dx);
+  }
+  draw(){
+    const w=this.wp?{a:this.wp==='spear'?-Math.PI/2+.08:Math.PI/2-.4,ext:0}:null;
+    fighter(this,this.pal,w,this.wp==='spear');
+    if(this.blood){ctx.fillStyle='rgba(150,10,16,.85)';ctx.fillRect(this.x-7,this.y-34,7,6);ctx.fillRect(this.x+1,this.y-26,8,5);ctx.fillRect(this.x-5,this.y-18,6,5);ctx.beginPath();ctx.arc(this.x+10,this.y-40,2.5,0,7);ctx.fill()}
+    if(!this.mute){ctx.textAlign='center';ctx.font='600 11px Cinzel,Georgia,serif';ctx.fillStyle='#e8dcc0';ctx.shadowColor='#000';ctx.shadowBlur=4;ctx.fillText(this.name,this.x,this.y-68);ctx.shadowBlur=0}
+  }
+}
+const DUMMY={x:-999,y:-999,r:0,dead:true,atk:null,state:'move',bars:false,face:0,walkT:0,moving:false,flash:0,drawTele(){},update(){},parried(){},weapon(){return{a:0,ext:0}}};
+function pushOut(e,x,y,rad){const dx=e.x-x,dy=e.y-y,d=Math.hypot(dx,dy)||1,m=rad+e.r;if(d<m){e.x+=dx/d*(m-d);e.y+=dy/d*(m-d);bounds(e)}}
+function drawPillar(x,y){
+  ctx.fillStyle='rgba(0,0,0,.4)';ctx.beginPath();ctx.ellipse(x+6,y+2,22,7,0,0,7);ctx.fill();
+  const g=ctx.createLinearGradient(x-14,0,x+14,0);g.addColorStop(0,'#3a322c');g.addColorStop(.45,'#8a7d6c');g.addColorStop(1,'#2c2621');
+  ctx.fillStyle=g;ctx.fillRect(x-13,y-104,26,100);
+  ctx.fillStyle='#5a4e42';ctx.fillRect(x-19,y-10,38,10);ctx.fillRect(x-19,y-112,38,10);
+  ctx.fillStyle='rgba(0,0,0,.25)';for(let i=-8;i<=8;i+=8)ctx.fillRect(x+i-1,y-100,1.5,92);
+}
+function ptF(fx,fy){const y=lerp(A.y1,A.y2,fy),ins=A.inset*(1-fy);return[lerp(A.x1+ins,A.x2-ins,fx),y]}
+function drawDoors(g,R){
+  R.doors.forEach(d=>{
+    if(d.hidden||d.side)return;
+    const big=d.gate,hw=big?56:34,top=big?A.y1-100:A.y1-80;
+    const arch=()=>{g.beginPath();g.moveTo(d.x-hw,A.y1);g.lineTo(d.x-hw,top+hw);g.arc(d.x,top+hw,hw,Math.PI,0);g.lineTo(d.x+hw,A.y1);g.closePath()};
+    if(d.c1){const gg=g.createLinearGradient(0,top,0,A.y1);gg.addColorStop(0,d.c1);gg.addColorStop(1,d.c2);g.fillStyle=gg}else g.fillStyle='#050404';
+    arch();g.fill();
+    if(big){g.strokeStyle='#1a1612';g.lineWidth=3;for(let k=-hw+8;k<hw;k+=14){g.beginPath();g.moveTo(d.x+k,top+8);g.lineTo(d.x+k,A.y1);g.stroke()}g.beginPath();g.moveTo(d.x-hw,A.y1-44);g.lineTo(d.x+hw,A.y1-44);g.stroke()}
+    arch();g.strokeStyle='#7a6544';g.lineWidth=6;g.stroke();
+    g.font='600 13px Cinzel,Georgia,serif';g.textAlign='center';g.fillStyle='#c8a15a';g.shadowColor='#000';g.shadowBlur=4;g.fillText(d.label.toUpperCase(),d.x,top-8);g.shadowBlur=0;
+  });
+}
+function drawProp(t,x,y,v){
+  const sh=w=>{ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(x+4,y+2,w,w*.3,0,0,7);ctx.fill()};
+  if(t==='pillar'){drawPillar(x,y);return}
+  if(t==='stall'){sh(38);ctx.fillStyle='#4a3220';ctx.fillRect(x-34,y-44,4,44);ctx.fillRect(x+30,y-44,4,44);ctx.fillStyle='#6a4a2a';ctx.fillRect(x-34,y-20,68,20);
+    for(let k=0;k<6;k++){ctx.fillStyle=k%2?'#efe6cf':((x/10|0)%2?'#a8302a':'#2a5a8a');ctx.fillRect(x-36+k*12,y-74,12,28)}
+    (v==='cloth'?['#2a5a8a','#a8302a','#6a3a8a','#2a8a5a']:v==='spice'?['#c8462a','#e8a030','#d9c84a','#8a3a22']:['#d9382a','#e8b030','#6aa83a']).forEach((c,i)=>{ctx.fillStyle=c;ctx.beginPath();if(v==='cloth')ctx.rect(x-30+i*16,y-46,12,28);else if(v==='spice')ctx.ellipse(x-24+i*16,y-22,8,6,0,0,7);else ctx.arc(x-18+i*18,y-24,6,0,7);ctx.fill()});return}
+  if(t==='house'){sh(56);ctx.fillStyle='#d9c9a2';ctx.fillRect(x-50,y-84,100,84);ctx.fillStyle='#6a3a2a';ctx.beginPath();ctx.moveTo(x-60,y-84);ctx.lineTo(x,y-130);ctx.lineTo(x+60,y-84);ctx.fill();
+    ctx.fillStyle='#4a3220';ctx.fillRect(x-12,y-38,24,38);ctx.fillStyle=Clock.cur.dark>.35?'#f2c46a':'#2b3b57';ctx.fillRect(x-40,y-62,18,18);ctx.fillRect(x+22,y-62,18,18);ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(x+10,y-84,40,84);return}
+  if(t==='well'){sh(24);ctx.fillStyle='#8f887b';ctx.fillRect(x-18,y-22,36,22);ctx.fillStyle='#5f9cc2';ctx.beginPath();ctx.ellipse(x,y-22,16,6,0,0,7);ctx.fill();ctx.fillStyle='#4a3220';ctx.fillRect(x-20,y-56,4,34);ctx.fillRect(x+16,y-56,4,34);ctx.fillStyle='#7a2f22';ctx.beginPath();ctx.moveTo(x-26,y-56);ctx.lineTo(x,y-74);ctx.lineTo(x+26,y-56);ctx.fill();return}
+  if(t==='barrel'){sh(14);ctx.fillStyle='#6a4a2a';rr(x-11,y-22,22,22,5);ctx.fill();ctx.fillStyle='#3a2a18';ctx.fillRect(x-11,y-16,22,2);ctx.fillRect(x-11,y-7,22,2);return}
+  if(t==='tree'){sh(30);ctx.fillStyle='#4a3220';ctx.fillRect(x-5,y-44,10,44);[[0,-70,28],[-18,-54,20],[18,-54,20]].forEach(([dx,dy,r])=>{ctx.fillStyle='#2d5a2a';ctx.beginPath();ctx.arc(x+dx,y+dy,r,0,7);ctx.fill()});return}
+  if(t==='hay'){sh(24);ctx.fillStyle='#c9a43a';ctx.beginPath();ctx.ellipse(x,y-14,20,16,0,0,7);ctx.fill();ctx.strokeStyle='#8a6a1a';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-12,y-14);ctx.lineTo(x+12,y-14);ctx.stroke();return}
+  if(t==='scarecrow'){sh(14);ctx.strokeStyle='#4a3220';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-56);ctx.moveTo(x-22,y-42);ctx.lineTo(x+22,y-42);ctx.stroke();ctx.fillStyle='#8a6a3a';ctx.fillRect(x-8,y-48,16,14);ctx.fillStyle='#d9b08c';ctx.beginPath();ctx.arc(x,y-62,8,0,7);ctx.fill();ctx.fillStyle='#4a3220';ctx.fillRect(x-12,y-72,24,4);ctx.fillRect(x-7,y-82,14,10);return}
+  if(t==='lamp'){sh(10);ctx.fillStyle='#2a2622';ctx.fillRect(x-2,y-62,4,62);ctx.fillStyle=Clock.cur.dark>.3?'#ffd98a':'#6a6a5a';ctx.fillRect(x-6,y-76,12,14);ctx.fillStyle='#2a2622';ctx.fillRect(x-8,y-78,16,3);return}
+  if(t==='barn'){sh(70);ctx.fillStyle='#8a2f26';ctx.fillRect(x-60,y-80,120,80);ctx.fillStyle='#5a1a14';ctx.beginPath();ctx.moveTo(x-68,y-80);ctx.lineTo(x,y-124);ctx.lineTo(x+68,y-80);ctx.fill();ctx.fillStyle='#4a1510';ctx.fillRect(x-24,y-46,48,46);ctx.strokeStyle='#e8dcc0';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x-24,y-46);ctx.lineTo(x+24,y);ctx.moveTo(x+24,y-46);ctx.lineTo(x-24,y);ctx.stroke();ctx.strokeRect(x-24,y-46,48,46);ctx.fillStyle=Clock.cur.dark>.35?'#f2c46a':'#2a1410';ctx.fillRect(x-8,y-72,16,14);return}
+  if(t==='cow'){const hb=Math.sin(Game.t*1.5+x)*2;sh(22);ctx.strokeStyle='#e8e4dc';ctx.lineWidth=3;[[-12,0],[-5,3],[7,0],[13,3]].forEach(([dx,dy])=>{ctx.beginPath();ctx.moveTo(x+dx,y-10);ctx.lineTo(x+dx,y+dy);ctx.stroke()});ctx.fillStyle='#f2efe8';ctx.beginPath();ctx.ellipse(x,y-18,20,11,0,0,7);ctx.fill();ctx.fillStyle='#3a2f2a';ctx.beginPath();ctx.ellipse(x-6,y-21,6,4,0,0,7);ctx.ellipse(x+7,y-15,5,3.5,0,0,7);ctx.fill();ctx.fillStyle='#f2efe8';ctx.beginPath();ctx.ellipse(x+19,y-14+hb,8,6,0,0,7);ctx.fill();ctx.fillStyle='#c9968a';ctx.fillRect(x+22,y-12+hb,5,4);return}
+  if(t==='fence'){ctx.fillStyle='#5a4228';ctx.fillRect(x-28,y-18,56,3);ctx.fillRect(x-28,y-9,56,3);[-26,0,26].forEach(dx=>ctx.fillRect(x+dx-2,y-22,4,22));return}
+  if(t==='inn'){sh(70);ctx.fillStyle='#c9b48a';ctx.fillRect(x-62,y-90,124,90);ctx.fillStyle='#4a2a1e';ctx.beginPath();ctx.moveTo(x-72,y-90);ctx.lineTo(x,y-138);ctx.lineTo(x+72,y-90);ctx.fill();ctx.fillStyle='#3a2a20';ctx.fillRect(x+30,y-132,14,30);ctx.fillStyle='#4a3220';ctx.fillRect(x-14,y-44,28,44);ctx.fillStyle=Clock.cur.dark>.35?'#f2c46a':'#2b3b57';ctx.fillRect(x-50,y-70,20,20);ctx.fillRect(x+30,y-70,20,20);ctx.fillStyle='#8a2f26';ctx.fillRect(x-30,y-56,60,10);ctx.fillStyle='#e8dcc0';ctx.font='700 8px Cinzel,Georgia,serif';ctx.textAlign='center';ctx.fillText('ESTALAGEM',x,y-48);return}
+  if(t==='hut'){sh(44);ctx.fillStyle='#a89270';ctx.fillRect(x-34,y-50,68,50);ctx.fillStyle='#8a7a3a';ctx.beginPath();ctx.moveTo(x-44,y-50);ctx.lineTo(x,y-86);ctx.lineTo(x+44,y-50);ctx.fill();ctx.fillStyle='#4a3220';ctx.fillRect(x-9,y-30,18,30);ctx.fillStyle=Clock.cur.dark>.35?'#f2c46a':'#2b3b57';ctx.fillRect(x+16,y-40,12,12);return}
+  if(t==='cart'){sh(30);ctx.fillStyle='#6a4a2a';ctx.fillRect(x-28,y-26,56,14);ctx.fillStyle='#c9a43a';ctx.beginPath();ctx.ellipse(x-8,y-30,12,8,0,0,7);ctx.ellipse(x+10,y-30,10,7,0,0,7);ctx.fill();ctx.strokeStyle='#3a2a18';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x-14,y-8,9,0,7);ctx.arc(x+16,y-8,9,0,7);ctx.stroke();return}
+  if(t==='crate'){sh(14);ctx.fillStyle='#7a5a32';ctx.fillRect(x-11,y-22,22,22);ctx.strokeStyle='#4a3220';ctx.lineWidth=2;ctx.strokeRect(x-11,y-22,22,22);ctx.beginPath();ctx.moveTo(x-11,y-22);ctx.lineTo(x+11,y);ctx.stroke();return}
+  if(t==='hen'){ctx.fillStyle='#e8dcc0';ctx.beginPath();ctx.ellipse(x,y-6,7,5,0,0,7);ctx.fill();ctx.beginPath();ctx.arc(x+6,y-11,3,0,7);ctx.fill();ctx.fillStyle='#c22';ctx.fillRect(x+5,y-15,2,3);return}
+  if(t==='campfire'){sh(22);ctx.fillStyle='#7a7468';[-12,-4,4,12].forEach(dx=>{ctx.beginPath();ctx.arc(x+dx,y-2,4,0,7);ctx.fill()});ctx.strokeStyle='#4a3220';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(x-10,y-4);ctx.lineTo(x+10,y-12);ctx.moveTo(x+10,y-4);ctx.lineTo(x-10,y-12);ctx.stroke();[['#ff7a1a',1],['#ffc247',.65],['#fff1b0',.35]].forEach(([c,k])=>{ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(x-8*k,y-10);ctx.quadraticCurveTo(x-9*k,y-10-12*k,x,y-10-24*k);ctx.quadraticCurveTo(x+9*k,y-10-12*k,x+8*k,y-10);ctx.fill()});return}
+  if(t==='fire'){sh(30);[['#c2330e',1.3],['#ff7a1a',1],['#ffc247',.65],['#fff1b0',.35]].forEach(([c,k])=>{ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(x-14*k,y);ctx.quadraticCurveTo(x-16*k,y-30*k,x-4*k,y-52*k);ctx.quadraticCurveTo(x+2*k,y-34*k,x+8*k,y-58*k);ctx.quadraticCurveTo(x+18*k,y-30*k,x+14*k,y);ctx.fill()});return}
+  if(t==='col'){sh(24);const g=ctx.createLinearGradient(x-12,0,x+12,0);g.addColorStop(0,'#bdb5a2');g.addColorStop(.5,'#f4efe2');g.addColorStop(1,'#a8a090');ctx.fillStyle=g;ctx.fillRect(x-11,y-96,22,94);ctx.fillStyle='#e0d8c6';ctx.fillRect(x-17,y-8,34,8);ctx.fillRect(x-17,y-104,34,8);return}
+  if(t==='rubble'){sh(26);ctx.fillStyle='#b8b0a0';[[-12,-4,9],[4,-8,11],[14,-3,7],[-2,-2,8]].forEach(([dx,dy,r])=>{ctx.beginPath();ctx.arc(x+dx,y+dy,r,0,7);ctx.fill()});return}
+  if(t==='forge'){sh(46);ctx.fillStyle='#4a3a2a';ctx.fillRect(x-36,y-60,6,60);ctx.fillRect(x+30,y-60,6,60);ctx.fillStyle='#5a2a1e';ctx.beginPath();ctx.moveTo(x-46,y-60);ctx.lineTo(x,y-86);ctx.lineTo(x+46,y-60);ctx.fill();ctx.fillStyle='#2a2622';ctx.fillRect(x-30,y-22,60,22);ctx.fillStyle='#7a7a7a';ctx.fillRect(x-12,y-30,24,8);ctx.fillStyle='#ff7a1a';ctx.beginPath();ctx.moveTo(x+12,y-22);ctx.quadraticCurveTo(x+16,y-36,x+22,y-46);ctx.quadraticCurveTo(x+26,y-34,x+30,y-22);ctx.fill();ctx.fillStyle='#ffc247';ctx.beginPath();ctx.moveTo(x+17,y-22);ctx.quadraticCurveTo(x+20,y-30,x+22,y-36);ctx.quadraticCurveTo(x+25,y-30,x+27,y-22);ctx.fill();return}
+  if(t==='blk'){sh(30);ctx.fillStyle='#4a453c';ctx.fillRect(x-24,y-46,48,46);ctx.fillStyle='#7a7466';ctx.fillRect(x-24,y-52,48,8);ctx.strokeStyle='rgba(0,0,0,.35)';ctx.lineWidth=1;ctx.strokeRect(x-24,y-46,48,46);return}
+  if(t==='boat'){sh(44);ctx.fillStyle='#6a4a2a';ctx.beginPath();ctx.moveTo(x-40,y-18);ctx.lineTo(x+40,y-18);ctx.lineTo(x+28,y);ctx.lineTo(x-28,y);ctx.fill();ctx.fillStyle='#4a3220';ctx.fillRect(x-2,y-74,4,56);ctx.fillStyle='#e8dcc0';ctx.beginPath();ctx.moveTo(x+4,y-72);ctx.lineTo(x+32,y-30);ctx.lineTo(x+4,y-30);ctx.fill();return}
+  if(t==='windmill'){sh(44);ctx.fillStyle='#d9c9a2';ctx.beginPath();ctx.moveTo(x-26,y);ctx.lineTo(x-16,y-110);ctx.lineTo(x+16,y-110);ctx.lineTo(x+26,y);ctx.fill();ctx.fillStyle='#6a3a2a';ctx.beginPath();ctx.moveTo(x-22,y-110);ctx.lineTo(x,y-136);ctx.lineTo(x+22,y-110);ctx.fill();
+    ctx.save();ctx.translate(x,y-104);ctx.rotate(Game.t*.8);ctx.strokeStyle='#5a4028';ctx.lineWidth=4;for(let k=0;k<4;k++){ctx.rotate(Math.PI/2);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,-54);ctx.stroke();ctx.fillStyle='#efe6cf';ctx.fillRect(-2,-52,14,32)}ctx.restore()}
+}
+function buildOutdoor(id){
+  const R=ROOMS[id],c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+  if(id==='garden'){g.drawImage(BGG,0,0);drawDoors(g,R);return c}
+  const poly=pts=>{g.beginPath();pts.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.closePath()};
+  const bricks=(x0,x1,y0,tone)=>{for(let y=y0,row=0;y<A.y1+8;y+=22,row++)for(let x=x0-(row%2)*30;x<x1;x+=60){const l=tone+Math.random()*24;g.fillStyle=`rgb(${l+10},${l},${l-18})`;g.fillRect(x+1,y+1,58,20)}};
+  const hills=cols=>{cols.forEach(([col,y,ph])=>{g.fillStyle=col;g.beginPath();g.moveTo(0,A.y1+10);for(let x=0;x<=W;x+=20)g.lineTo(x,y+Math.sin(x*.012+ph)*16);g.lineTo(W,A.y1+10);g.fill()})};
+  const treeline=col=>{for(let x=10;x<W;x+=26){g.fillStyle=col;g.beginPath();g.arc(x+rnd(-4,4),A.y1-14+rnd(-6,6),rnd(12,17),0,7);g.fill()}};
+  const forest=id==='bosque1'||id==='bosque2',og=R.og?OG[R.og]:null;
+  // ---- fundo: o céu fica transparente (sol e lua são desenhados por trás) ----
+  if(id==='aroer'){
+    hills([['#7ea06a',70,1],['#5f8a52',92,3]]);treeline('#24482a');
+    [[560,66],[640,58],[730,70],[820,62],[900,68]].forEach(([x,y])=>{g.fillStyle='#7a3a2a';g.beginPath();g.moveTo(x-32,y+14);g.lineTo(x,y-16);g.lineTo(x+32,y+14);g.fill();g.fillStyle='#d9c9a2';g.fillRect(x-26,y+14,52,26)});
+    bricks(20,310,44,118);g.fillStyle='#8a7a64';for(let x=20;x<310;x+=40)g.fillRect(x+4,34,22,12);
+    [60,260].forEach(x=>{g.fillStyle='#8a7a64';g.fillRect(x-24,0,48,A.y1);g.fillStyle='#7a2a2a';g.beginPath();g.moveTo(x-30,0);g.lineTo(x,-30);g.lineTo(x+30,0);g.fill();g.fillStyle='#1a1410';g.fillRect(x-3,40,6,16)});
+  }else if(id==='vila'){
+    hills([['#8aa870',74,2],['#6a8c58',96,4]]);treeline('#2a5030');
+  }else if(forest){
+    g.fillStyle='#0f2412';g.fillRect(0,0,W,A.y1+10);
+    for(let i=0;i<150;i++){g.fillStyle=['#1c3a1e','#24482a','#163018','#2d5a2a'][i%4];g.beginPath();g.arc(rnd(0,W),rnd(0,A.y1),rnd(20,38),0,7);g.fill()}
+  }else if(id==='helia'){
+    for(let x=30;x<W;x+=90){g.fillStyle='#e8e0d0';g.fillRect(x-13,56,26,64);g.fillStyle='#cfc6b4';g.fillRect(x-18,50,36,8)}
+    g.fillStyle='#d9d0be';g.fillRect(0,40,W,12);g.fillStyle='#e8e0d0';g.beginPath();g.moveTo(330,40);g.lineTo(480,6);g.lineTo(630,40);g.fill();g.fillStyle='#b8b0a0';g.fillRect(330,40,300,10);
+  }else if(og){
+    if(og.bg==='sea'){g.fillStyle='#2a5a8a';g.fillRect(0,64,W,A.y1-54);g.strokeStyle='rgba(255,255,255,.25)';g.lineWidth=2;for(let y=76;y<A.y1;y+=14){g.beginPath();for(let x=0;x<=W;x+=24)g.lineTo(x,y+Math.sin(x*.05+y)*3);g.stroke()}g.fillStyle='#6a4a2a';g.fillRect(0,A.y1-12,W,12);for(let x=20;x<W;x+=60)g.fillRect(x,A.y1-30,6,20)}
+    else if(og.bg==='mount'){[['#6a6a74',40,.8],['#8a8a94',70,2]].forEach(([c,y,ph])=>{g.fillStyle=c;g.beginPath();g.moveTo(0,A.y1+10);for(let x=0;x<=W;x+=30)g.lineTo(x,y+Math.abs(Math.sin(x*.013+ph))*50);g.lineTo(W,A.y1+10);g.fill()});g.fillStyle='#e8e0d0';for(let x=60;x<W;x+=150){g.fillRect(x,70,22,40);g.fillRect(x-4,66,30,6)}}
+    else if(og.bg==='hills')hills([['#7a9a62',74,2],['#5a7a4a',96,4]]);
+    else if(og.bg==='forest'){g.fillStyle='#0f2412';g.fillRect(0,30,W,A.y1);for(let i=0;i<140;i++){g.fillStyle=['#1c3a1e','#24482a','#163018'][i%3];g.beginPath();g.arc(rnd(0,W),rnd(30,A.y1),rnd(18,34),0,7);g.fill()}}
+    else if(og.bg==='maze'){bricks(0,W,60,92);g.fillStyle='#7a7060';for(let x=0;x<W;x+=40)g.fillRect(x+4,50,22,12)}
+  }
+  // ---- chão ----
+  const GR=({aroer:['#3c5e2e','#6a944a'],vila:['#4a6a34','#7a9a4a'],bosque1:['#1c3a1e','#2e5a2e'],bosque2:['#1c3a1e','#2e5a2e'],helia:['#cfc6b4','#eee6d2']})[id]||og.gr;
+  g.fillStyle=GR[0];g.fillRect(0,A.y1,W,H-A.y1);
+  const fl=[ptF(0,0),ptF(1,0),ptF(1,1),ptF(0,1)];
+  let gr=g.createLinearGradient(0,A.y1,0,A.y2);gr.addColorStop(0,GR[0]);gr.addColorStop(1,GR[1]);
+  poly(fl);g.fillStyle=gr;g.fill();g.save();poly(fl);g.clip();
+  const blades=n=>{for(let i=0;i<n;i++){const x=rnd(A.x1,A.x2),y=rnd(A.y1,A.y2);g.strokeStyle=Math.random()<.5?'rgba(20,50,15,.35)':'rgba(170,210,110,.22)';g.beginPath();g.moveTo(x,y);g.lineTo(x+rnd(-2,2),y-rnd(3,7));g.stroke()}};
+  if(id==='aroer'){
+    blades(1300);
+    // plantações (esquerda, ao fundo)
+    for(let k=0;k<5;k++){const f0=.1+k*.07,f1=f0+.04;g.fillStyle=k%2?'#c9a43a':'#b88f2a';poly([ptF(.04,f0),ptF(.3,f0),ptF(.3,f1),ptF(.04,f1)]);g.fill()}
+    for(let i=0;i<260;i++){const q=ptF(rnd(.04,.3),rnd(.1,.4));g.strokeStyle='rgba(120,80,20,.4)';g.beginPath();g.moveTo(q[0],q[1]);g.lineTo(q[0]+rnd(-2,2),q[1]-rnd(3,8));g.stroke()}
+    // estrada de terra do portão e praça da feira (calçada)
+    g.fillStyle='#9a7e52';poly([ptF(.05,0),ptF(.2,0),ptF(.34,.6),ptF(.2,1),ptF(.05,1)]);g.fill();
+    g.fillStyle='#8a8070';poly([ptF(.3,.3),ptF(1,.3),ptF(1,1),ptF(.3,1)]);g.fill();
+    for(let i=0;i<700;i++){const q=ptF(rnd(.32,.99),rnd(.32,.99));g.fillStyle=`rgba(${Math.random()<.5?0:255},${Math.random()<.5?0:240},${Math.random()<.5?0:220},${rnd(.05,.12)})`;g.beginPath();g.ellipse(q[0],q[1],rnd(6,12),rnd(3,6),0,0,7);g.fill()}
+    g.strokeStyle='rgba(0,0,0,.22)';g.lineWidth=1;for(let i=0;i<=8;i++){const a=ptF(.3,.3+i*.0875),b=ptF(1,.3+i*.0875);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke()}
+  }else if(id==='vila'){
+    blades(1400);g.fillStyle='rgba(150,120,80,.7)';poly([ptF(.7,0),ptF(.88,0),ptF(.6,.5),ptF(.4,.5)]);g.fill();poly([ptF(.25,.35),ptF(.75,.35),ptF(.75,.6),ptF(.25,.6)]);g.fill();
+  }else if(forest){
+    blades(1800);g.lineCap='round';g.lineJoin='round';
+    const trail=(w,col)=>{g.strokeStyle=col;g.lineWidth=w;g.beginPath();if(id==='bosque1'){g.moveTo(130,510);g.lineTo(830,115)}else{for(let x=40;x<=920;x+=20){const y=330+Math.sin(x*.012)*45;x===40?g.moveTo(x,y):g.lineTo(x,y)}}g.stroke()};
+    trail(84,'#3d2e1c');trail(70,'#6a5236');
+    for(let i=0;i<260;i++){const x=rnd(A.x1,A.x2),y=rnd(A.y1,A.y2);g.fillStyle=['rgba(120,90,40,.4)','rgba(20,60,25,.5)','rgba(160,120,40,.3)'][i%3];g.beginPath();g.ellipse(x,y,rnd(2,5),rnd(1,3),0,0,7);g.fill()}
+    if(id==='bosque2'){g.globalCompositeOperation='lighter';const lg=g.createRadialGradient(900,285,10,900,285,190);lg.addColorStop(0,'rgba(255,230,160,.45)');lg.addColorStop(1,'rgba(255,230,160,0)');g.fillStyle=lg;g.fillRect(600,100,360,360);g.globalCompositeOperation='source-over'}
+  }else if(id==='helia'){
+    g.strokeStyle='rgba(120,110,90,.3)';g.lineWidth=1.2;for(let i=0;i<=8;i++){const a=ptF(0,i/8),b=ptF(1,i/8);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke()}for(let j=0;j<=12;j++){const a=ptF(j/12,0),b=ptF(j/12,1);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke()}
+    g.save();g.translate(W/2,340);g.scale(1,.45);g.strokeStyle='rgba(180,140,60,.55)';g.lineWidth=4;[170,120,60].forEach(r=>{g.beginPath();g.arc(0,0,r,0,7);g.stroke()});g.restore();
+  }else if(og){
+    blades(og.bg==='selvagem'||og.bg==='forest'?1400:700);
+    for(let i=0;i<140;i++){const q=ptF(rnd(.02,.98),rnd(.02,.98));g.fillStyle='rgba(0,0,0,.14)';g.beginPath();g.ellipse(q[0],q[1],rnd(3,10),rnd(2,4),0,0,7);g.fill()}
+    if(og.bg==='sea'){g.strokeStyle='rgba(60,40,20,.35)';g.lineWidth=1.5;for(let i=0;i<=10;i++){const a=ptF(0,i/10),b=ptF(1,i/10);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke()}}
+    if(og.bg==='forest'){g.fillStyle='rgba(10,10,30,.55)';g.beginPath();g.ellipse(W/2,300,70,24,0,0,7);g.fill()}
+  }
+  g.restore();
+  drawDoors(g,R);
+  poly(fl);g.strokeStyle='rgba(0,0,0,.4)';g.lineWidth=3;g.stroke();
+  gr=g.createLinearGradient(0,A.y2,0,A.y2+44);gr.addColorStop(0,id==='helia'?'#9a9080':'#243a1c');gr.addColorStop(1,'#0c0908');
+  g.fillStyle=gr;g.beginPath();g.moveTo(A.x1,A.y2);g.lineTo(A.x2,A.y2);g.lineTo(A.x2+14,A.y2+44);g.lineTo(A.x1-14,A.y2+44);g.fill();
+  g.fillStyle='#0a0706';g.fillRect(0,A.y2+44,W,H);
+  return c;
+}
+function buildRoom(id){
+  const R=ROOMS[id],c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+  const poly=pts=>{g.beginPath();pts.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.closePath()};
+  g.fillStyle='#0a0808';g.fillRect(0,0,W,H);
+  for(let y=0,row=0;y<A.y1+8;y+=26,row++)for(let x=-(row%2)*36;x<W;x+=72){const l=(R.tone||40)+Math.random()*16;g.fillStyle=`rgb(${l+8},${l+3},${l})`;g.fillRect(x+1,y+1,70,24)}
+  R.banners.forEach(x=>{g.fillStyle='#7a1f26';g.fillRect(x-20,10,40,86);g.beginPath();g.moveTo(x-20,96);g.lineTo(x,112);g.lineTo(x+20,96);g.fill();g.fillStyle='#c8a15a';g.fillRect(x-20,10,40,4);g.beginPath();g.arc(x,48,9,0,7);g.fill();g.fillStyle='#7a1f26';g.beginPath();g.arc(x,48,4,0,7);g.fill()});
+  R.windows.forEach(x=>{const gr=g.createLinearGradient(0,40,0,A.y1);gr.addColorStop(0,'#9ab8e8');gr.addColorStop(1,'#35476e');g.fillStyle=gr;g.beginPath();g.moveTo(x-24,A.y1-10);g.lineTo(x-24,A.y1-62);g.arc(x,A.y1-62,24,Math.PI,0);g.lineTo(x+24,A.y1-10);g.fill();g.strokeStyle='#6a5a44';g.lineWidth=4;g.stroke();g.strokeStyle='#2a2218';g.lineWidth=2;g.beginPath();g.moveTo(x,A.y1-86);g.lineTo(x,A.y1-10);g.moveTo(x-24,A.y1-44);g.lineTo(x+24,A.y1-44);g.stroke()});
+  (R.shelves||[]).forEach(x=>{g.fillStyle='#3a2616';g.fillRect(x-48,16,96,102);for(let r=0;r<4;r++){let bx=x-44;while(bx<x+42){const w=5+Math.random()*5;g.fillStyle=['#6a1f26','#244a86','#2f5a3a','#8a6d2b','#4a2a5a','#a8442a'][(Math.random()*6)|0];g.fillRect(bx,22+r*24,w,20);bx+=w+1}g.fillStyle='#24160c';g.fillRect(x-48,44+r*24,96,3)}});
+  if(R.hearth){g.fillStyle='#2a221c';g.fillRect(400,30,160,90);g.fillStyle='#0a0605';g.fillRect(420,56,120,64);const hg=g.createRadialGradient(480,110,4,480,110,70);hg.addColorStop(0,'rgba(255,190,80,.95)');hg.addColorStop(1,'rgba(255,100,30,0)');g.fillStyle=hg;g.fillRect(400,40,160,90);[200,270,690,760].forEach(x=>{g.fillStyle='#4a4a4a';g.beginPath();g.arc(x,70,13,0,7);g.fill();g.strokeStyle='#222';g.lineWidth=2;g.beginPath();g.moveTo(x,10);g.lineTo(x,57);g.stroke()})}
+  if(R.throne){g.fillStyle='#8a6d2b';g.fillRect(450,26,60,92);g.fillStyle='#5a1219';g.fillRect(458,34,44,84);g.fillStyle='#d6b25e';g.beginPath();g.moveTo(450,26);g.lineTo(480,6);g.lineTo(510,26);g.fill();g.fillStyle='#6a1a22';g.fillRect(452,96,56,22)}
+  const fl=[ptF(0,0),ptF(1,0),ptF(1,1),ptF(0,1)];
+  let gr=g.createLinearGradient(0,A.y1,0,A.y2);gr.addColorStop(0,(R.fc||['#241e1b'])[0]);gr.addColorStop(1,(R.fc||[0,'#4b4038'])[1]);poly(fl);g.fillStyle=gr;g.fill();
+  for(let i=0;i<8;i++)for(let j=0;j<12;j++)if((i+j)%2){g.fillStyle='rgba(255,255,255,.04)';poly([ptF(j/12,i/8),ptF((j+1)/12,i/8),ptF((j+1)/12,(i+1)/8),ptF(j/12,(i+1)/8)]);g.fill()}
+  g.strokeStyle='rgba(0,0,0,.35)';g.lineWidth=1.2;
+  for(let i=0;i<=8;i++){const a=ptF(0,i/8),b=ptF(1,i/8);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke()}
+  for(let j=0;j<=12;j++){const a=ptF(j/12,0),b=ptF(j/12,1);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke()}
+  if(R.throne){g.fillStyle='#3a312b';poly([ptF(.34,0),ptF(.66,0),ptF(.7,.1),ptF(.3,.1)]);g.fill()}
+  if(R.carpet!=='none'){
+  const vert=R.carpet==='v',car=vert?[[.41,0],[.59,0],[.59,1],[.41,1]]:[[0,.42],[1,.42],[1,.64],[0,.64]];
+  poly(car.map(([a,b])=>ptF(a,b)));g.fillStyle=R.carpetCol||'#7a1b22';g.fill();g.strokeStyle='#c8a15a';g.lineWidth=3;g.stroke();
+  g.strokeStyle='rgba(200,161,90,.35)';g.lineWidth=1.5;
+  for(let k=1;k<7;k++){const a=vert?ptF(.41,k/7):ptF(k/7,.42),b=vert?ptF(.59,k/7):ptF(k/7,.64);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke()}
+  }
+  g.globalCompositeOperation='lighter';
+  R.windows.forEach(x=>{g.fillStyle='rgba(150,180,255,.06)';poly([[x-24,A.y1],[x+24,A.y1],[x+150,A.y1+300],[x+70,A.y1+300]]);g.fill()});
+  g.globalCompositeOperation='source-over';
+  drawDoors(g,R);
+  poly(fl);g.strokeStyle='#6b5a46';g.lineWidth=3;g.stroke();
+  gr=g.createLinearGradient(0,A.y2,0,A.y2+44);gr.addColorStop(0,'#2b241e');gr.addColorStop(1,'#0c0908');
+  g.fillStyle=gr;g.beginPath();g.moveTo(A.x1,A.y2);g.lineTo(A.x2,A.y2);g.lineTo(A.x2+14,A.y2+44);g.lineTo(A.x1-14,A.y2+44);g.fill();
+  g.fillStyle='#0a0706';g.fillRect(0,A.y2+44,W,H);
+  return c;
+}
+
+/* ============ SALVAMENTO, SOM, CENAS, NOME ============ */
+const Save={
+  key:'aroer_save_v1',
+  has(){try{return !!localStorage.getItem(this.key)}catch(e){return false}},
+  write(){try{localStorage.setItem(this.key,JSON.stringify(Game.snapshot()));return true}catch(e){return false}},
+  read(){try{return JSON.parse(localStorage.getItem(this.key))}catch(e){return null}}
+};
+const SFX={
+  c:null,
+  init(){try{if(!this.c)this.c=new (window.AudioContext||window.webkitAudioContext)();if(this.c.state==='suspended')this.c.resume()}catch(e){}},
+  env(dur,vol){const c=this.c,g=c.createGain();g.gain.setValueAtTime(vol,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+dur);g.connect(c.destination);return g},
+  noise(dur,freq,vol){if(!this.c)return;const c=this.c,b=c.createBuffer(1,c.sampleRate*dur,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;const n=c.createBufferSource();n.buffer=b;const f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=freq;n.connect(f);f.connect(this.env(dur,vol));n.start()},
+  tone(type,f0,f1,dur,vol){if(!this.c)return;const c=this.c,o=c.createOscillator();o.type=type;o.frequency.setValueAtTime(f0,c.currentTime);o.frequency.exponentialRampToValueAtTime(f1,c.currentTime+dur);o.connect(this.env(dur,vol));o.start();o.stop(c.currentTime+dur)},
+  door(){this.noise(.5,260,.9);this.tone('sine',90,40,.4,.8)},
+  clang(){this.tone('square',1250,900,.35,.2);this.tone('triangle',2100,1700,.5,.18);this.noise(.12,6000,.3)},
+  scream(){this.tone('sawtooth',500,1400,.9,.14);this.tone('sawtooth',620,1100,.9,.1)}
+};
+const Scene={ // cenas não interativas com linha do tempo (sons, legendas, diálogos)
+  on:false,t:0,tl:[],i:0,draw:null,cap:'',capT:0,ph:'',
+  start(fn,tl){this.on=true;this.t=0;this.tl=tl;this.i=0;this.draw=fn;this.cap='';this.capT=0;this.ph='';wrap.classList.add('scn')},
+  stop(){this.on=false;wrap.classList.remove('scn')},
+  update(dt){
+    if(!this.on||Dlg.on)return;
+    this.t+=dt;this.capT=Math.max(0,this.capT-dt);
+    while(this.on&&this.i<this.tl.length&&this.t>=this.tl[this.i].at){const e=this.tl[this.i++];e.f(this)}
+  },
+  render(){
+    ctx.clearRect(0,0,W,H);if(this.draw)this.draw(this.t,this);
+    if(this.capT>0&&this.cap){ctx.globalAlpha=Math.min(1,this.capT*2);ctx.textAlign='center';ctx.font='italic 26px Georgia,serif';ctx.fillStyle='#e8dcc0';ctx.shadowColor='#000';ctx.shadowBlur=8;ctx.fillText(this.cap,W/2,H/2);ctx.shadowBlur=0;ctx.globalAlpha=1}
+  }
+};
+function drawBedroom(t,s){
+  ctx.fillStyle='#05060d';ctx.fillRect(0,0,W,H);
+  if(s.ph==='black')return;
+  let g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#10162a');g.addColorStop(1,'#1c1a24');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#14101a';ctx.fillRect(0,360,W,240);
+  ctx.fillStyle='#26407a';ctx.fillRect(110,70,110,170);ctx.strokeStyle='#3a2e22';ctx.lineWidth=8;ctx.strokeRect(110,70,110,170);
+  ctx.beginPath();ctx.moveTo(165,70);ctx.lineTo(165,240);ctx.moveTo(110,155);ctx.lineTo(220,155);ctx.stroke();
+  ctx.fillStyle='#e8eeff';ctx.beginPath();ctx.arc(175,120,16,0,7);ctx.fill();
+  ctx.globalCompositeOperation='lighter';ctx.fillStyle='rgba(120,150,255,.08)';ctx.beginPath();ctx.moveTo(110,240);ctx.lineTo(220,240);ctx.lineTo(420,520);ctx.lineTo(200,520);ctx.fill();ctx.globalCompositeOperation='source-over';
+  ctx.fillStyle='#3a2616';ctx.fillRect(400,300,260,150);ctx.fillStyle='#7a1f26';ctx.fillRect(412,330,236,104);ctx.fillStyle='#e8e0d0';ctx.fillRect(418,312,64,32);
+  if(s.ph==='sleep'){ctx.fillStyle='#d9b08c';ctx.beginPath();ctx.arc(446,324,13,0,7);ctx.fill();ctx.fillStyle='#2a1d14';ctx.beginPath();ctx.arc(446,320,13,Math.PI,0);ctx.fill()}
+  else{
+    ctx.globalCompositeOperation='lighter';const gg=ctx.createRadialGradient(40,300,10,40,300,420);gg.addColorStop(0,'rgba(255,120,40,.45)');gg.addColorStop(1,'rgba(255,90,20,0)');ctx.fillStyle=gg;ctx.fillRect(0,0,W,H);ctx.globalCompositeOperation='source-over';
+    const ar={x:330,y:470,r:16,face:0,walkT:0,moving:false,flash:0,dead:false};
+    ctx.save();ctx.translate(ar.x,ar.y);ctx.scale(1.35,1.35);ctx.translate(-ar.x,-ar.y);fighter(ar,PAL_A,{a:-.9,ext:0},false);
+    ctx.fillStyle='rgba(150,10,16,.9)';ctx.fillRect(ar.x-7,ar.y-34,7,6);ctx.fillRect(ar.x+1,ar.y-26,8,5);ctx.fillRect(ar.x-5,ar.y-18,6,5);ctx.restore();
+  }
+}
+const GOLPE_TL=()=>[
+ {at:.1,f:s=>{s.ph='sleep'}},
+ {at:.5,f:()=>Dlg.say([{n:'Narrador',t:'Naquela noite, o príncipe adormeceu em seus aposentos, embalado pelo silêncio do castelo...'}],true)},
+ {at:.8,f:s=>{s.ph='black'}},
+ {at:2,f:s=>{SFX.door();s.cap='* portas sendo arrombadas *';s.capT=2.2}},
+ {at:3.4,f:s=>{SFX.clang();s.cap='* o choque de espadas *';s.capT=2.2}},
+ {at:4.2,f:()=>SFX.clang()},
+ {at:5,f:s=>{SFX.scream();s.cap='* gritos ao longe *';s.capT=2.4}},
+ {at:6.2,f:()=>SFX.door()},
+ {at:7.4,f:s=>{s.ph='artur';SFX.door();s.cap=''}},
+ {at:8.2,f:()=>Dlg.say([{n:'Capitão Artur',t:'Alteza, acorde! Fomos traídos! Precisamos sair daqui agora!'}],true)},
+ {at:8.4,f:s=>{s.stop();Game.startEscape()}}
+];
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');setTimeout(()=>e.classList.remove('on'),2400)}
+function cardSeq(texts,mid){ // cartões em tela preta e depois a ação
+  if(busy)return;busy=true;fade.classList.add('on');
+  let i=0;
+  const next=()=>{
+    if(i<texts.length){$('card').textContent=texts[i++];$('card').classList.add('on');setTimeout(()=>{$('card').classList.remove('on');setTimeout(next,800)},2400)}
+    else{mid();fade.classList.remove('on');setTimeout(()=>{busy=false},650)}
+  };
+  setTimeout(next,650);
+}
+function askName(cb){
+  show('name',true);const inp=$('nameIn');inp.value='';setTimeout(()=>inp.focus(),60);
+  const ok=()=>{if(!$('name').classList.contains('on'))return;const v=(inp.value||'').trim().slice(0,14)||'Viajante';Game.playerName=v;$('who').textContent=v;show('name',false);cb()};
+  $('nameOk').onclick=ok;inp.onkeydown=e=>{if(e.key==='Enter')ok()};
+}
+function loadGameUI(){
+  const d=Save.read();if(!d)return;SFX.init();
+  transition(()=>{show('menu',false);show('pause',false);show('modal',false);wrap.classList.remove('inmenu');Game.restore(d);Input.keys={}});
+}
+function distSeg(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,t=clamp(((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy),0,1);return Math.hypot(px-(ax+dx*t),py-(ay+dy*t))}
+function genTrees(seed,ok){
+  let a=seed;const r=()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+  const out=[];
+  for(let i=0;i<400&&out.length<46;i++){const x=A.x1+30+r()*(A.x2-A.x1-60),y=A.y1+40+r()*(A.y2-A.y1-60);if(!ok(x,y))continue;if(out.some(q=>Math.hypot(q[1]-x,q[2]-y)<54))continue;out.push(['tree',x|0,y|0,16])}
+  return out;
+}
+const PAL_V={armor:'#7a6a50',trim:'#6a5a40',cape:'#4a3a2a',skin:'#d9b08c',hair:'#2a1d14',leg:'#4a4036',eye:'#111'};
+const PAL_L={armor:'#3a1a22',trim:'#a3262a',cape:'#1a1014',skin:'#c79d7b',hair:'#222',leg:'#1a1a1e',eye:'#c22'};
+class OrderLord extends Boss{ // primeiro chefe: comandante da Ordem da Nova Coroa
+  reset(){super.reset();Object.assign(this,{x:W/2,y:250,r:19,hp:240,maxHp:240,ghost:240,pal:PAL_L,spear:false,name:'COMANDANTE DA ORDEM',mode:'idle',bars:true,noPhase:true,dmgMul:1,cd:1.2})}
+  get immune(){return this.mode!=='fight'}
+  update(dt,p){
+    if(this.mode==='idle'&&this.state==='move'){this.ghost+=(this.hp-this.ghost)*Math.min(1,dt*2.5);this.face=Math.atan2(p.y-this.y,p.x-this.x);this.moving=false;return}
+    super.update(dt,p);
+  }
+}
+function drawHarpy(h){
+  const fl=Math.sin(h.ph*1.2)*.8,hy=h.y-(h.state==='dive'?30:70);
+  ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(h.x,h.y+2,16,5,0,0,7);ctx.fill();
+  [-1,1].forEach(d=>{ctx.fillStyle='#4a3a4a';ctx.beginPath();ctx.moveTo(h.x,hy);ctx.quadraticCurveTo(h.x+d*34,hy-24+fl*22,h.x+d*52,hy-6+fl*30);ctx.quadraticCurveTo(h.x+d*30,hy+6,h.x,hy+10);ctx.fill()});
+  ctx.fillStyle='#8a6a5a';ctx.beginPath();ctx.ellipse(h.x,hy+4,8,13,0,0,7);ctx.fill();
+  ctx.fillStyle='#d2a27c';ctx.beginPath();ctx.arc(h.x,hy-11,6,0,7);ctx.fill();ctx.fillStyle='#2a1a2a';ctx.beginPath();ctx.arc(h.x,hy-13,6.4,Math.PI,0);ctx.fill();
+  ctx.strokeStyle='#c8b060';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(h.x-4,hy+16);ctx.lineTo(h.x-6,hy+24);ctx.moveTo(h.x+4,hy+16);ctx.lineTo(h.x+6,hy+24);ctx.stroke();
+}
+function drawSwordItem(){
+  ctx.save();ctx.translate(480,400);ctx.rotate(-.5);ctx.fillStyle='#e8f0ff';ctx.fillRect(-26,-3,52,6);ctx.fillStyle='#8a6a2f';ctx.fillRect(-30,-6,6,12);ctx.fillRect(-38,-3,8,6);ctx.restore();
+}
+const ESC_PROPS={gallery:[['fire',240,340,16],['fire',720,330,16],['fire',480,430,16]],gate:[['fire',200,300,16],['fire',760,300,16],['fire',250,450,16],['fire',720,450,16]]};
+
+/* ============ INIMIGOS, CHEFES, QUÍRON, MISSÕES SECUNDÁRIAS ============ */
+const OG={porto:{bg:'sea',gr:['#a89a78','#cdbf98']},monte:{bg:'mount',gr:['#6a665a','#9a948a']},periferia:{bg:'hills',gr:['#5a7a42','#8a9a58']},selvagem:{bg:'forest',gr:['#1f3a24','#34543a']},arredores:{bg:'maze',gr:['#8a7e68','#b8ac92']}};
+const PAL_STONE={armor:'#9a9a9a',trim:'#b0b0b0',cape:'#888',skin:'#a8a8a8',hair:'#8a8a8a',leg:'#888',eye:'#777'};
+const PAL_ROCK={armor:'#6a665e',trim:'#8a867c',cape:'#4a463e',skin:'#7a766c',hair:'#5a564e',leg:'#4a463e',eye:'#ffb040'};
+const FOES={
+ harpia:{name:'HARPIA',hp:70,r:14,spd:1.3,dmg:.7,kind:'harpy',picks:['lunge','swing']},
+ aranha:{name:'ARANHA GIGANTE',hp:95,r:18,spd:1.1,dmg:.8,kind:'spider',picks:['lunge','swing','thrust']},
+ cultista:{name:'CULTISTA',hp:95,r:15,spd:1,dmg:.8,kind:'human',pal:{armor:'#3a2a4a',trim:'#8a5ac8',cape:'#241a34',skin:'#c79d7b',hair:'#111',leg:'#1a1a22',eye:'#c4f'},picks:['swing','thrust']},
+ atleta:{name:'ATLETA',hp:85,r:16,spd:1,dmg:.6,kind:'human',bare:true,pal:{armor:'#c9a070',trim:'#e8dcc0',cape:'#8a6a3a',skin:'#c9966e',hair:'#2a1a12',leg:'#8a6a3a',eye:'#222'},picks:['swing','thrust']},
+ elemental:{name:'ELEMENTAL DE ROCHA',hp:230,r:26,spd:.8,dmg:1.3,kind:'rock',picks:['swing','lunge']}
+};
+class Foe extends Boss{
+  constructor(kind){Foe.pending=kind;super();this.kind=kind}
+  reset(){super.reset();const c=FOES[this.kind||Foe.pending];Object.assign(this,{x:W/2,y:240,r:c.r,hp:c.hp,maxHp:c.hp,ghost:c.hp,name:c.name,pal:c.pal||PAL_B,spear:false,bars:true,noPhase:true,dmgMul:c.dmg,cd:1.2,cfg:c})}
+  get spd(){return this.cfg?this.cfg.spd:1}
+  pick(){const c=this.cfg.picks;return c[(Math.random()*c.length)|0]}
+  draw(){
+    const k=this.cfg.kind,x=this.x,y=this.y;
+    if(k==='harpy'){drawHarpy({x,y,ph:Game.t*8,state:this.state==='act'?'dive':'circ'});return}
+    if(k==='spider'){
+      const t=this.walkT*10,fx=Math.cos(this.face),fy=Math.sin(this.face);
+      ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.ellipse(x,y+3,26,9,0,0,7);ctx.fill();
+      ctx.strokeStyle='#1a1214';ctx.lineWidth=3;
+      for(let i=0;i<4;i++){const dy=(i-1.5)*7,sw=Math.sin(t+i)*(this.moving?4:0);[-1,1].forEach(d=>{ctx.beginPath();ctx.moveTo(x+d*8,y-12+dy*.4);ctx.lineTo(x+d*24,y-20+dy+sw);ctx.lineTo(x+d*30,y+dy*.3+sw);ctx.stroke()})}
+      ctx.fillStyle='#2a1a22';ctx.beginPath();ctx.ellipse(x,y-14,16,12,0,0,7);ctx.fill();ctx.beginPath();ctx.arc(x+fx*14,y-14+fy*8,8,0,7);ctx.fill();
+      ctx.fillStyle='#e22';ctx.fillRect(x+fx*14-4,y-17+fy*8,3,3);ctx.fillRect(x+fx*14+2,y-17+fy*8,3,3);return;
+    }
+    if(k==='rock'){ctx.save();ctx.translate(x,y);ctx.scale(1.6,1.6);ctx.translate(-x,-y);fighter(this,PAL_ROCK,this.weapon(),false);ctx.restore();return}
+    fighter(this,this.pal,this.cfg.bare?null:this.weapon(),false);
+  }
+}
+const PAL_M={armor:'#3a5a4a',trim:'#c8b060',cape:'#1a3a2a',skin:'#8ab08a',hair:'#2a5a3a',leg:'#2a3a2a',eye:'#333'};
+class Medusa extends Boss{ // a Venda esconde os olhos; ao abri-los, o olhar petrifica
+  reset(){super.reset();Object.assign(this,{x:W/2,y:240,r:19,hp:260,maxHp:260,ghost:260,pal:PAL_M,spear:false,name:'MEDUSA',bars:true,noPhase:true,dmgMul:1,cd:1.2})}
+  pick(d){const r=Math.random();return r<.45?'gaze':(d<135?(r<.75?'swing':'thrust'):'thrust')}
+  deco(){
+    const x=this.x,y=this.y-43,open=this.state==='tele'&&this.atk&&this.atk.type==='gaze';
+    [[-9,-9],[-3,-12],[3,-12],[9,-9]].forEach(([dx,dy],i)=>{ctx.strokeStyle='#2f7a3a';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x+dx,y-6);ctx.quadraticCurveTo(x+dx*1.8,y+dy-8,x+dx*1.5+(i%2?4:-4),y+dy-14);ctx.stroke()});
+    if(open){ctx.fillStyle='#ffe040';ctx.fillRect(x-6,y-2,4,3);ctx.fillRect(x+2,y-2,4,3)}else{ctx.fillStyle='#111';ctx.fillRect(x-9,y-3,18,5)}
+  }
+}
+class Cerbero extends Boss{
+  reset(){super.reset();Object.assign(this,{x:W/2,y:240,r:24,hp:280,maxHp:280,ghost:280,spear:false,name:'CÉRBERO',bars:true,noPhase:true,dmgMul:1.1,cd:1})}
+  get spd(){return 1.2}
+  pick(d){return d>170?(Math.random()<.7?'lunge':'thrust'):(Math.random()<.6?'swing':'thrust')}
+  draw(){
+    const x=this.x,y=this.y,fx=Math.cos(this.face),fy=Math.sin(this.face),sw=this.moving?Math.sin(this.walkT*10)*5:0;
+    ctx.fillStyle='rgba(0,0,0,.5)';ctx.beginPath();ctx.ellipse(x,y+3,34,11,0,0,7);ctx.fill();
+    ctx.save();if(this.flash>0)ctx.filter='brightness(2.6)';
+    ctx.strokeStyle='#1a1210';ctx.lineWidth=6;ctx.lineCap='round';
+    [-16,-6,8,18].forEach((dx,i)=>{ctx.beginPath();ctx.moveTo(x+dx,y-14);ctx.lineTo(x+dx+(i%2?sw:-sw)*.5,y);ctx.stroke()});
+    ctx.fillStyle='#2a1a14';ctx.beginPath();ctx.ellipse(x,y-22,34,17,0,0,7);ctx.fill();
+    const hx=x+fx*30,hy=y-28+fy*8;
+    [-1,0,1].forEach(o=>{const px=hx-fy*o*16,py=hy+fx*o*10-Math.abs(o)*4;ctx.fillStyle='#3a2218';ctx.beginPath();ctx.arc(px,py,10,0,7);ctx.fill();ctx.fillStyle='#2a1810';ctx.beginPath();ctx.ellipse(px+fx*9,py+fy*5,7,5,0,0,7);ctx.fill();ctx.fillStyle='#ff3a2a';ctx.beginPath();ctx.arc(px-fy*3+fx*2,py-4,1.8,0,7);ctx.arc(px+fy*3+fx*2,py-4,1.8,0,7);ctx.fill()});
+    ctx.strokeStyle='#9a9a9a';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x+fx*16,y-24,13,0,7);ctx.stroke();
+    ctx.restore();
+  }
+}
+class Minotauro extends Boss{ // investida em linha reta: se bater na parede, fica atordoado
+  reset(){super.reset();Object.assign(this,{x:W/2,y:240,r:24,hp:300,maxHp:300,ghost:300,pal:{armor:'#5a3a2a',trim:'#8a6a3a',cape:'#2a1a12',skin:'#8a5a3a',hair:'#2a1a12',leg:'#3a2a1e',eye:'#c22'},spear:false,name:'MINOTAURO',bars:true,noPhase:true,dmgMul:1.1,cd:1.2})}
+  pick(d){return d>150&&Math.random()<.6?'charge':(Math.random()<.6?'swing':'thrust')}
+  update(dt,p){
+    super.update(dt,p);
+    if(this.state==='act'&&this.atk&&this.atk.type==='charge'&&(this.x<A.x1+70||this.x>A.x2-70||this.y<A.y1+50||this.y>A.y2-45)){
+      this.state='stun';this.stunT=2.6;this.post=100;this.atk=null;Game.shake=12;burst(this.x,this.y-30,'#ffd98a',20,260,.7,3);
+    }
+  }
+  draw(){
+    const x=this.x,y=this.y;ctx.save();ctx.translate(x,y);ctx.scale(1.35,1.35);ctx.translate(-x,-y);
+    fighter(this,this.pal,this.weapon(),false);
+    ctx.strokeStyle='#e8dcc0';ctx.lineWidth=4;ctx.lineCap='round';[-1,1].forEach(d=>{ctx.beginPath();ctx.moveTo(x+d*7,y-48);ctx.quadraticCurveTo(x+d*16,y-50,x+d*15,y-62);ctx.stroke()});
+    ctx.restore();
+  }
+}
+const PAL_Q={armor:'#4a5a4a',trim:'#b08d57',cape:'#2e3a4d',skin:'#c79d7b',hair:'#d8d4c8',leg:'#2a2623',eye:'#222'};
+class Quiron extends Artur{
+  reset(){super.reset();Object.assign(this,{x:W/2,y:230,r:18,hp:320,maxHp:320,ghost:320,pal:PAL_Q,spear:true,name:'MESTRE QUÍRON',mode:'idle',bars:true,dmgMul:1,cdMul:1,noPhase:true,cd:1.2,phase:1})}
+  get spd(){return this.phase===2?1.25:1}
+  get m(){return this.phase===2?.8:1}
+  update(dt,p){
+    if(this.mode==='fight'&&this.phase===1&&this.hp<=this.maxHp*.5&&this.hp>0){this.phase=2;Dlg.say([qi('Bom. Agora deixo de me conter.')],false)}
+    super.update(dt,p);
+  }
+  onDeath(){this.dead=false;this.hp=0;this.state='stun';this.stunT=99;this.atk=null;this.mode='idle';Game.quironYield()}
+}
+const qi=t=>({n:'Mestre Quíron',t});
+const QSTEPS=[
+ {lines:[qi('Então é você. O que viu as estátuas de Eleutéria e não pôde fazer nada.'),qi('Poucos me procuram. Menos ainda merecem o que peço em troca: a verdade.'),qi('Por que você luta?'),{n:'{n}',t:'Eu vi uma cidade virar pedra, e não consegui salvar ninguém.'},qi('Culpa. Um motivo frágil.'),qi('Se você não sabe por que luta... qualquer motivo serve para te quebrar.'),qi('Tome esta espada e esta armadura. Perca-as e perderá a vida junto.')],
+  start(){Game.armed=true;Game.noWeapon=false;Game.armorBonus=20;Game.player.maxHp=120;Game.player.hp=120},
+  txt:()=>'Ataque pesado (SHIFT esquerdo) ×3: '+Math.min(Tut.cnt,3)+' / 3',prog:()=>Tut.cnt/3,done:()=>Tut.cnt>=3,ev(n){if(n==='heavy')Tut.cnt++}},
+ {lines:[qi('Primeira lição: nunca receba o golpe de peito aberto. Segure o botão direito e espere o instante exato. Quem apara quebra a postura do inimigo.')],
+  start(){Game.inst.mode='demo';Game.inst.cd=.5},txt:()=>'Segure o botão direito e bloqueie o golpe',prog:()=>Tut.cnt,done:()=>Tut.cnt>=1,ev(n){if(n==='block')Tut.cnt=1}},
+ {lines:[qi('Segunda: nem tudo se apara. Esquive-se com o Espaço e use esse instante para cortar.')],
+  txt:()=>'Esquive com a Barra de Espaço ×2',prog:()=>Tut.cnt/2,done:()=>Tut.cnt>=2,ev(n){if(n==='dash')Tut.cnt++}}
+];
+const QCLOSE=[qi('Mecânica não é luta. Agora, o teste.'),qi('Ataque-me com tudo. Se eu o derrotar, você volta ao seu pó. Se não... talvez haja algo a lapidar.')];
+const QUI_DEF={room:'quiron',x:480,y:290,name:'Mestre Quíron',wp:'spear',pal:PAL_Q,lines:[''],
+  linesFn(){const n=Game.trophies.length;return Game.mode==='sq'?[qi('As missões da região são suas para escolher. Quando estiver pronto, diga: entregamos os troféus.')]:n===0?[qi('Os guardiões esperam: o Templo Esquecido, as Ruínas Subterrâneas e o Labirinto. As portas atrás de mim levam a eles.'),qi('Use a Venda (V) contra a Medusa. Traga a cabeça, a corrente e os chifres.')]:[qi('Ainda faltam provas. Não volte de mãos vazias.')]},
+  onEnd(){if(Game.mode==='sq')Game.askReturn()}};
+const BOSS_INTRO={medusa:'Medusa mantém uma Venda sobre os olhos. Quando a retira, o olhar petrifica quem estiver à frente. Vista a Venda (V) quando o cone vermelho surgir.',cerbero:'Das ruínas ecoa um uivo triplo: Cérbero, preso a uma corrente de aço, desperta. É rápido: esquive nas investidas.',minotauro:'No labirinto, o Minotauro raspa o chão. Se errar a investida e bater na parede, ficará atordoado.'};
+const TROPHY={templo:{name:'Cabeça de Medusa',line:'A Venda caiu, e o olhar dela morreu com ela. Sob a venda, um selo de cera: uma coroa dentro de um círculo.'},ruinas:{name:'Corrente de Cérbero',line:'A fera tombou. A corrente que a prendia é de aço trabalhado, e traz uma insígnia da Ordem da Nova Coroa.'},labirinto:{name:'Chifres do Minotauro',line:'O Minotauro cai. Parto os chifres como prova... e há um cravo de ferro profanado fincado em um deles: Magia Profanada.'}};
+const QUESTS=[
+ {id:1,title:'O Pensador de Mármore',giver:'Leandro',loc:'Cidade Principal',desc:'Investigar as ruínas da periferia e recuperar o diário de um guerreiro citado por Evêmero.',
+  offer:['Silêncio, forasteiro... estou a pensar. Ou estava, até o céu cair sobre a cidade.','Evêmero dizia que os deuses foram homens. Um guerreiro de que ele falava deixou um diário nas ruínas da periferia, e ninguém o buscou.','Traga-me esse diário. Quero provar o que Evêmero disse... ou descobrir que errou.'],
+  remind:['O diário, forasteiro. Nas ruínas da periferia, a oeste desta praça.'],done:['É ele! Letra de soldado, escrita há séculos... Diz que o homem que chamaram de deus partilhava o pão com seus soldados e morreu de febre.','Evêmero tinha razão em parte: os deuses sangram. Mas quem os esqueceu também errou. Obrigado.'],after:['Ainda leio o diário. Cada linha ensina mais que um templo.'],
+  steps:[{t:'obj',obj:'Recupere o diário do guerreiro nas ruínas da periferia',list:[{room:'periferia',x:620,y:440,label:'Diário do guerreiro',kind:'item',auto:true}]},{t:'ret',obj:'Entregue o diário a Leandro'}]},
+ {id:2,title:'A Oferenda nas Sombras',giver:'Thalia',loc:'Cidade Portuária',desc:'Purificar um altar profanado por cultistas em uma caverna marinha.',
+  offer:['Meu pai deixava oferendas ao mar num altar da caverna marinha. Agora cultistas o profanaram.','A água ali vira sangue ao luar. Purifique o altar, eu lhe peço.'],remind:['O altar fica na caverna marinha, ao lado do cais.'],done:['A água voltou a ser clara... Obrigada. Meu pai dizia que o mar guarda quem o respeita.'],after:['Hoje deixei uma oferenda no altar. Está limpo.'],
+  steps:[{t:'kill',room:'cav_marinha',foes:['cultista','cultista'],obj:'Derrote os cultistas na caverna marinha'},{t:'obj',obj:'Purifique o altar profanado',list:[{room:'cav_marinha',x:480,y:300,label:'Purificar o altar',kind:'altar',text:'Você entoa a oferenda antiga e derrama água limpa sobre o altar. A mancha escura se dissolve, e o mar recua, calmo.'}]},{t:'ret',obj:'Fale com Thalia'}]},
+ {id:3,title:'As Asas sobre a Rota Comercial',giver:'Nikos',loc:'Montanhas',desc:'Derrotar o bando de harpias e recuperar suprimentos médicos.',
+  offer:['Meu comboio de suprimentos médicos foi derrubado por um bando de harpias na rota comercial.','Derrote-as e recupere as caixas. Há gente em Oros morrendo sem remédio.'],remind:['As harpias rondam a rota de Oros. As caixas devem estar por lá.'],done:['As caixas estão inteiras! Isso salva muitas vidas. Você luta melhor do que parece.'],after:['Os remédios já chegaram aos doentes. Obrigado.'],
+  steps:[{t:'kill',room:'monte',foes:['harpia','harpia','harpia'],obj:'Derrote o bando de harpias na rota de Oros'},{t:'obj',obj:'Recupere os suprimentos médicos',list:[{room:'monte',x:700,y:430,label:'Suprimentos médicos',kind:'item',auto:true}]},{t:'ret',obj:'Entregue os suprimentos a Nikos'}]},
+ {id:4,title:'O Testamento do Filósofo',giver:'Sábio Dionísio',loc:'Cidade Principal',desc:'Encontrar os 3 fragmentos do tratado sobre mutações e magia.',
+  offer:['Sou Dionísio, sábio de Eleutéria. Escrevi um tratado sobre mutações e magia, e ele foi rasgado em três fragmentos durante o ataque.','Encontre-os: um na praça de Eleutéria, outro em Thalassa e outro em Oros. O mundo precisa saber o que a magia pode fazer ao corpo.'],remind:['Três fragmentos: Eleutéria, Thalassa e Oros.'],done:['Os três pedaços! Aqui explico como a Magia Profanada deforma o que toca: homens, bestas, até a pedra. Guarde isto como um aviso.'],after:['Estou reescrevendo o tratado. Ele será lido em todo o continente.'],
+  steps:[{t:'obj',obj:'Encontre os 3 fragmentos: Eleutéria, Thalassa e Oros',list:[{room:'helia',x:150,y:470,label:'Fragmento do tratado',kind:'item',auto:true},{room:'porto',x:700,y:440,label:'Fragmento do tratado',kind:'item',auto:true},{room:'monte',x:250,y:460,label:'Fragmento do tratado',kind:'item',auto:true}]},{t:'ret',obj:'Entregue os fragmentos a Dionísio'}]},
+ {id:5,title:'As Lágrimas de Pedra',giver:'Helena',loc:'Periferia',desc:'Coletar a Lótus de Pedra em uma caverna de aranhas para curar parcialmente o noivo petrificado.',
+  offer:['Meu noivo foi petrificado diante dos meus olhos. Dizem que a Lótus de Pedra, que cresce numa caverna de aranhas, pode devolver-lhe a carne.','Eu não sei lutar. Traga-me a lótus... por favor.'],remind:['A caverna das aranhas fica na periferia. A lótus cresce no fundo dela.'],done:['A pedra rachou... só uma mão, só o rosto! Ele ainda não pode falar, mas chorou. É um começo. Obrigada.'],after:['Todo dia lhe seguro a mão. Ela está quente.'],
+  steps:[{t:'kill',room:'cav_aranhas',foes:['aranha','aranha'],obj:'Derrote as aranhas na caverna'},{t:'obj',obj:'Colha a Lótus de Pedra',list:[{room:'cav_aranhas',x:480,y:300,label:'Lótus de Pedra',kind:'item',auto:true}]},{t:'ret',obj:'Leve a lótus a Helena'}]},
+ {id:6,title:'O Desafio dos Atletas',giver:'Mestre Ariston',loc:'Cidade Montanhosa',desc:'Vencer 3 combates de boxe/bastão no ginásio tradicionalista.',
+  offer:['No ginásio de Oros, tradicionalistas treinam como seus avós: boxe e bastão, em honra dos deuses.','Vença três dos meus atletas e eu o respeitarei. Mostre que o corpo também reza.'],remind:['O ginásio fica logo ali. Três atletas esperam.'],done:['Três vitórias limpas. Você luta com humildade, e isso é raro. Seja bem-vindo ao ginásio.'],after:['Volte quando quiser treinar. A porta está aberta.'],
+  steps:[{t:'kill',room:'ginasio',foes:['atleta','atleta','atleta'],obj:'Vença 3 atletas no ginásio'},{t:'ret',obj:'Fale com Mestre Ariston'}]},
+ {id:7,title:'O Eco no Labirinto',giver:'Cassandra',loc:'Arredores do Labirinto',desc:'Desativar armadilhas e resgatar exploradores presos.',
+  offer:['Exploradores ficaram presos nos arredores do labirinto, entre armadilhas que eu mesma ajudei a mapear.','Desative os três mecanismos e resgate os dois que sobraram. Cuidado com o eco: ele repete o que você teme.'],remind:['Três mecanismos e dois exploradores, nos arredores do labirinto.'],done:['Vivos! Todos vivos. O labirinto cobra um preço de quem entra, e hoje não cobrou ninguém.'],after:['Refaço o mapa das armadilhas. Ninguém mais se perderá.'],
+  steps:[{t:'obj',obj:'Desative 3 armadilhas e resgate 2 exploradores',list:[{room:'arredores',x:300,y:360,label:'Desativar armadilha',kind:'switch',text:'Você trava o mecanismo. O eco do labirinto silencia por um instante.'},{room:'arredores',x:600,y:360,label:'Desativar armadilha',kind:'switch',text:'O mecanismo estala e se desarma.'},{room:'arredores',x:480,y:300,label:'Desativar armadilha',kind:'switch',text:'A última lâmina oculta recua para dentro da parede.'},{room:'arredores',x:260,y:440,label:'Resgatar explorador',kind:'explorer',text:'Você liberta o explorador, que murmura: "Obrigado... o eco me dizia que ninguém viria".'},{room:'arredores',x:700,y:440,label:'Resgatar explorador',kind:'explorer',text:'O segundo explorador se levanta, trêmulo, mas vivo.'}]},{t:'ret',obj:'Fale com Cassandra'}]},
+ {id:8,title:'A Fonte Maculada',giver:'Velha Mágia',loc:'Áreas Selvagens',desc:'Investigar a nascente de água escura em ruínas e eliminar a corrupção.',
+  offer:['Há uma nascente nas ruínas selvagens. Sua água ficou escura, e tudo que a bebe se corrompe.','Elimine o que a guarda e purifique a fonte. Não é natural: a Magia Profanada passou por aqui.'],remind:['A fonte fica no coração das áreas selvagens.'],done:['A água clareou. Sinto a terra respirar de novo. A magia profana deixa cicatrizes, mas elas fecham.'],after:['Hoje bebi da fonte. Estava doce.'],
+  steps:[{t:'kill',room:'selvagem',foes:['cultista','cultista'],obj:'Elimine os corrompidos que guardam a fonte'},{t:'obj',obj:'Purifique a fonte maculada',list:[{room:'selvagem',x:480,y:300,label:'Purificar a fonte',kind:'fonte',text:'Você derrama o sal sagrado na nascente. A água escura se dissolve em fumaça, e a corrupção se vai.'}]},{t:'ret',obj:'Fale com a Velha Mágia'}]},
+ {id:9,title:'A Lenda do Escudo do Açoite',giver:'Gorgo',loc:'Cidade Portuária',desc:'Coletar ferro-espelho em cavernas, derrotar o Elemental de Rocha e forjar o escudo.',
+  offer:['Ferreiro Gorgo, ao seu dispor. Quero forjar o Escudo do Açoite, lenda do porto, mas preciso de ferro-espelho da caverna.','Três pedaços. E um Elemental de Rocha guarda o veio. Derrote-o e traga o metal.'],remind:['Ferro-espelho: três pedaços, na caverna ao lado do cais.'],done:['Ferro-espelho puro! Dê-me um instante... Pronto: o Escudo do Açoite. Reflete golpes e olhares. Honra a quem o carrega.'],after:['O escudo é seu. Que nunca tombe diante de um inimigo.'],
+  steps:[{t:'obj',obj:'Colete 3 pedaços de ferro-espelho',list:[{room:'cav_ferro',x:300,y:360,label:'Ferro-espelho',kind:'item',auto:true},{room:'cav_ferro',x:480,y:330,label:'Ferro-espelho',kind:'item',auto:true},{room:'cav_ferro',x:660,y:360,label:'Ferro-espelho',kind:'item',auto:true}]},{t:'kill',room:'cav_ferro',foes:['elemental'],obj:'Derrote o Elemental de Rocha'},{t:'ret',obj:'Entregue o ferro-espelho a Gorgo'}]},
+ {id:10,title:'O Filósofo sem Nome',giver:'Orador',loc:'Cidade Principal',desc:'Encontrar a inscrição na lápide esquecida para pacificar o debate entre Racionalistas e Tradicionalistas.',
+  offer:['Sou apenas "o Orador". Perdi meu nome há muito. Racionalistas e tradicionalistas se matam em debates, e eu não sei como pará-los.','Dizem que uma lápide esquecida na periferia traz uma inscrição que ambos respeitariam. Encontre-a.'],remind:['A lápide está na periferia, esquecida entre as ruínas.'],done:['"O que chamam de deuses foi um dia memória; o que chamam de memória é um dia deus." É isso. Os dois lados se calaram. Talvez a paz comece pelo silêncio.'],after:['Os debates seguem, mas já sem facas.'],
+  steps:[{t:'obj',obj:'Encontre a lápide esquecida na periferia',list:[{room:'periferia',x:760,y:350,label:'Ler a inscrição da lápide',kind:'stone',text:'Sob o musgo, uma inscrição antiga: "O que chamam de deuses foi um dia memória; o que chamam de memória é um dia deus."'}]},{t:'ret',obj:'Leve a inscrição ao Orador'}]}
+];
+function drawQObj(o){
+  const x=o.x,y=o.y;
+  ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(x,y+2,14,5,0,0,7);ctx.fill();
+  if(o.kind==='altar'){ctx.fillStyle='#5a544a';ctx.fillRect(x-20,y-26,40,26);ctx.fillStyle='#7a2a2a';ctx.fillRect(x-14,y-30,28,6)}
+  else if(o.kind==='fonte'){ctx.fillStyle='#4a4a4a';ctx.beginPath();ctx.ellipse(x,y-8,24,9,0,0,7);ctx.fill();ctx.fillStyle='#1a1a2a';ctx.beginPath();ctx.ellipse(x,y-9,19,6,0,0,7);ctx.fill()}
+  else if(o.kind==='switch'){ctx.fillStyle='#5a544a';ctx.fillRect(x-8,y-14,16,14);ctx.strokeStyle='#c8a15a';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y-14);ctx.lineTo(x+8,y-30);ctx.stroke()}
+  else if(o.kind==='explorer'){ctx.fillStyle='#8a6a4a';ctx.beginPath();ctx.ellipse(x,y-8,16,7,0,0,7);ctx.fill();ctx.fillStyle='#d9b08c';ctx.beginPath();ctx.arc(x+16,y-9,6,0,7);ctx.fill()}
+  else if(o.kind==='stone'){ctx.fillStyle='#7a766c';ctx.fillRect(x-12,y-34,24,34);ctx.beginPath();ctx.arc(x,y-34,12,Math.PI,0);ctx.fill()}
+  else{ctx.fillStyle='#e8dcc0';ctx.fillRect(x-8,y-14,16,12);ctx.fillStyle='#c8a15a';ctx.fillRect(x-8,y-16,16,3)}
+  ctx.globalCompositeOperation='lighter';const g=ctx.createRadialGradient(x,y-14,2,x,y-14,34);g.addColorStop(0,'rgba(255,230,150,.35)');g.addColorStop(1,'rgba(255,230,150,0)');ctx.fillStyle=g;ctx.fillRect(x-34,y-48,68,68);ctx.globalCompositeOperation='source-over';
+}
+const Journal={
+  on:false,
+  open(){this.on=true;this.render();show('journal',true)},
+  close(){this.on=false;show('journal',false)},
+  toggle(){this.on?this.close():this.open()},
+  render(){
+    $('jb').innerHTML=QUESTS.map(q=>{const st=Game.qs(q.id),cls=st.s==='act'?'act':st.s==='done'?'done':'',lab=st.s==='act'?'Em andamento':st.s==='done'?'Concluída':'Disponível',sp=st.s==='act'?q.steps[st.i]:null;
+      return `<div class="qi ${cls}"><b>${q.id}. ${q.title}</b> <i>[${lab}]</i><br>${q.loc} · ${q.giver}<br>${q.desc}${sp?`<br><i>Objetivo: ${sp.obj}</i>`:''}</div>`}).join('');
+  }
+};
+function askChoice(title,opts,cb){
+  $('chT').textContent=title;const b=$('chB');b.innerHTML='';
+  opts.forEach((o,i)=>{const e=document.createElement('button');e.textContent=o;e.onclick=()=>{show('choice',false);cb(i)};b.appendChild(e)});
+  show('choice',true);
+}
+
+/* ============ MENU PRINCIPAL (fundo animado) ============ */
+const mctx=$('mc').getContext('2d');
+const CASTLE=[[110,300,62],[250,350,48],[380,250,72],[520,330,54],[640,285,66],[790,360,50]];
+const Menu={
+  t:0,fog:[],embers:[],
+  init(){
+    for(let i=0;i<10;i++)this.fog.push({x:rnd(0,W),y:rnd(250,H),r:rnd(170,320),vx:rnd(8,22)*(Math.random()<.5?-1:1),a:rnd(.05,.12)});
+    for(let i=0;i<240;i++)this.update(.05);this.t=0;
+  },
+  update(dt){
+    this.t+=dt;
+    this.fog.forEach(f=>{f.x+=f.vx*dt;if(f.x>W+f.r)f.x=-f.r;if(f.x<-f.r)f.x=W+f.r});
+    if(Math.random()<.5)this.embers.push({x:rnd(0,W),y:H+10,vy:rnd(25,75),ph:rnd(0,6.3),s:rnd(1,2.8),life:rnd(5,10),age:0});
+    this.embers.forEach(e=>{e.age+=dt;e.y-=e.vy*dt;e.x+=Math.sin(e.age*1.6+e.ph)*18*dt});
+    this.embers=this.embers.filter(e=>e.age<e.life&&e.y>-10);
+  },
+  draw(){
+    const c=mctx,t=this.t;
+    let g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#09060a');g.addColorStop(.6,'#1b0d0e');g.addColorStop(1,'#050303');
+    c.fillStyle=g;c.fillRect(0,0,W,H);
+    g=c.createRadialGradient(760,120,4,760,120,280);g.addColorStop(0,'rgba(225,210,195,.55)');g.addColorStop(.1,'rgba(170,150,150,.2)');g.addColorStop(1,'rgba(0,0,0,0)');
+    c.fillStyle=g;c.fillRect(0,0,W,H);
+    c.fillStyle='#d8ccbb';c.beginPath();c.arc(760,120,22,0,7);c.fill();
+    // silhueta do castelo de Aroer
+    c.fillStyle='#070405';c.fillRect(0,420,W,180);c.fillRect(0,395,W,40);
+    CASTLE.forEach(([x,y,w],n)=>{
+      c.fillRect(x,y,w,430-y);
+      for(let i=0;i<w;i+=w/4)c.fillRect(x+i,y-9,w/7,9);
+      if(n!==2){c.beginPath();c.moveTo(x-5,y);c.lineTo(x+w/2,y-44);c.lineTo(x+w+5,y);c.fill()}
+      c.fillStyle=`rgba(255,150,60,.6)`;c.fillRect(x+w/2-2,y+26,4,9);c.fillStyle='#070405';
+    });
+    // névoa em movimento
+    for(const f of this.fog){
+      g=c.createRadialGradient(f.x,f.y,0,f.x,f.y,f.r);g.addColorStop(0,`rgba(130,118,135,${f.a})`);g.addColorStop(1,'rgba(130,118,135,0)');
+      c.fillStyle=g;c.fillRect(f.x-f.r,f.y-f.r,f.r*2,f.r*2);
+    }
+    // brasas subindo
+    c.globalCompositeOperation='lighter';
+    for(const e of this.embers){
+      const a=Math.sin(Math.PI*e.age/e.life);
+      c.fillStyle=`rgba(255,${110+(e.s*20|0)},45,${a*.35})`;c.beginPath();c.arc(e.x,e.y,e.s*2.6,0,7);c.fill();
+      c.fillStyle=`rgba(255,200,120,${a*.9})`;c.beginPath();c.arc(e.x,e.y,e.s,0,7);c.fill();
+    }
+    c.globalCompositeOperation='source-over';
+    g=c.createRadialGradient(W/2,H/2,150,W/2,H/2,620);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.8)');
+    c.fillStyle=g;c.fillRect(0,0,W,H);
+  }
+};
+
+/* ============ MÁQUINA DE ESTADOS: MENU / PLAYING / PAUSED ============ */
+const GS={MENU:'MENU',CUTSCENE:'CUTSCENE_INICIAL',TUTORIAL:'TUTORIAL_ARTUR',AUTO_SAVE:'AUTO_SAVE',CASTLE:'EXPLORACAO_COMPLETA_AROER',CITY:'EXPLORACAO_COMPLETA_AROER',GOLPE:'NOITE_GOLPE_REI',FUGA:'FUGA_CASTELO_BOSS',VILA:'SALTO_TEMPORAL_VILA',FUGA_SEM_ARMAS:'FUGA_STEALTH_SEM_ARMAS',BOSQUE:'VIAGEM_BOSQUE',HELIACA:'CHEGADA_HELIACA',ATAQUE:'ATAQUE_HARPIAS_PETRIFICACAO',TREINO:'TREINAMENTO_QUIRON',TESTE:'TESTE_QUIRON',MISSAO:'MISSAO_TRES_BOSSES',SQ:'SIDE_QUESTS_HELIACA',RETORNO:'RETORNO_QUIRON_DECISAO',PAUSED:'PAUSED'};
+const PLAY=[GS.TUTORIAL,GS.CASTLE,GS.GOLPE,GS.FUGA,GS.VILA,GS.FUGA_SEM_ARMAS,GS.BOSQUE,GS.HELIACA,GS.ATAQUE,GS.TREINO,GS.TESTE,GS.MISSAO,GS.SQ,GS.RETORNO];
+let gstate=GS.MENU,prevG=GS.CASTLE,busy=false,last=performance.now();
+const wrap=$('wrap'),fade=$('fade');
+const show=(id,on)=>$(id).classList.toggle('on',on);
+
+function transition(mid){ // fade out -> troca de tela -> fade in
+  if(busy)return;busy=true;fade.classList.add('on');
+  setTimeout(()=>{mid();fade.classList.remove('on');setTimeout(()=>{busy=false},650)},650);
+}
+function startGame(){ // MENU -> CUTSCENE
+  SFX.init();transition(()=>{show('menu',false);show('pause',false);show('modal',false);wrap.classList.remove('inmenu');wrap.classList.add('cut');show('cut',true);Cut.start();Input.keys={};gstate=GS.CUTSCENE});
+}
+function toTutorial(){ // CUTSCENE -> TUTORIAL_CASTELO (jardim, com Artur)
+  transition(()=>{show('cut',false);wrap.classList.remove('cut');Game.initTutorial();Input.keys={};gstate=GS.TUTORIAL});
+}
+function toCastle(){ // TUTORIAL -> EXPLORACAO_CASTELO
+  transition(()=>{Game.initCastle();gstate=GS.AUTO_SAVE;Save.write();toast('Jogo salvo automaticamente');Game.syncStage();Input.keys={}});
+}
+function menuMid(){
+  Dlg.cb=null;Dlg.on=false;$('dlg').classList.remove('on');$('obj').classList.remove('on');$('prompt').style.display='none';
+  show('pause',false);show('cut',false);show('menu',true);wrap.classList.remove('cut');wrap.classList.add('inmenu');gstate=GS.MENU;Scene.stop();$('bLoad').disabled=!Save.has();
+}
+function toMenu(){transition(menuMid)}
+function pauseGame(){prevG=gstate;gstate=GS.PAUSED;Input.keys={};show('pause',true)}
+function resumeGame(){show('pause',false);gstate=prevG;last=performance.now()}
+
+const CONTROLS=[
+  ['W A S D','Movimento ágil em 8 direções (também define para onde o personagem olha)'],
+  ['Botão Esquerdo','Ataque leve com a espada, na direção do personagem'],
+  ['Botão Direito','Defesa / Bloqueio, na direção do personagem (segure; no instante do golpe, apara)'],
+  ['SHIFT esq.','Ataque pesado: mais lento, maior alcance e dano elevado'],
+  ['Espaço','Perto de um NPC: inicia a conversa e avança as falas. Em combate: esquiva / dash (i-frames)'],
+  ['P','Salvamento manual (aparece "Jogo Salvo!")'],
+  ['V','Vestir / tirar a Venda (depois que Quíron a entrega)'],
+  ['J','Diário de missões (nas missões secundárias da Região Helíaca)'],
+  ['T','Avança o relógio do mundo (para ver o ciclo dia e noite)'],
+  ['Esc','Pausa durante a partida'],
+  ['R','Reinicia o tutorial']
+];
+function openModal(kind){
+  if(kind==='ctl'){
+    $('mT').textContent='Controles';
+    $('mB').innerHTML=CONTROLS.map(([k,d])=>`<div class="row"><div class="kc">${k}</div><div>${d}</div></div>`).join('');
+  }else{
+    $('mT').textContent='Sobre';
+    $('mB').innerHTML=`<p>Um príncipe exilado em busca da verdade após a queda de Aroer.</p>
+<p>Quando ele era criança, o Rei Aldren foi assassinado em um golpe político da elite do reino, e o herdeiro só escapou graças ao Capitão da Guarda Real. Anos depois, sem saber toda a verdade, o Príncipe de Aroer decide investigar o próprio passado e encontra a sombra da <em>Ordem da Nova Coroa</em> e da <em>Magia Profanada</em>.</p>
+<p>Mas a estrada é longa e ele ainda não sabe lutar. Seu primeiro mestre é o Capitão da Guarda Real, que lhe ensina os primeiros golpes nos jardins do castelo, e cada morador de Aroer guarda um pedaço da verdade sobre o mundo.</p>
+<p>Este protótipo começa com um prólogo e o treino com o Capitão Artur no jardim real. Depois, o Castelo de Aroer, os campos e a cidade ficam livres para explorar, do amanhecer à noite, e seus moradores contam a história e os segredos do mundo. Até que a noite chega, e com ela a queda de Aroer: a fuga, os anos de exílio, a Região Helíaca, o mestre Quíron e a caça aos três guardiões.</p>`;
+  }
+  show('modal',true);
+}
+$('bPlay').addEventListener('click',startGame);
+$('bCtl').addEventListener('click',()=>openModal('ctl'));
+$('bAbout').addEventListener('click',()=>openModal('about'));
+$('bLoad').addEventListener('click',loadGameUI);
+$('jClose').addEventListener('click',()=>Journal.close());
+$('mClose').addEventListener('click',()=>show('modal',false));
+$('modal').addEventListener('mousedown',e=>{if(e.target.id==='modal')show('modal',false)});
+$('bRes').addEventListener('click',resumeGame);
+$('bMenu').addEventListener('click',toMenu);
+$('pause').addEventListener('contextmenu',e=>e.preventDefault());
+$('bSkip').addEventListener('click',()=>{if(gstate===GS.CUTSCENE)toTutorial()});
+$('cut').addEventListener('mousedown',e=>{if(!e.target.closest('button')&&gstate===GS.CUTSCENE&&!busy)Cut.advance()});
+
+/* ============ LOOP ============ */
+Input.init();
+BGG=buildBGG();Object.keys(ROOMS).forEach(k=>{ROOM_BG[k]=ROOMS[k].outdoor?buildOutdoor(k):buildRoom(k)});
+Menu.init();$('bLoad').disabled=!Save.has();
+function frame(now){
+  const dt=Math.min(.033,(now-last)/1000);last=now;
+  if(Input.hit('escape')){
+    if($('modal').classList.contains('on'))show('modal',false);
+    else if(Journal.on)Journal.close();
+    else if(PLAY.includes(gstate)&&!busy&&!$('name').classList.contains('on')&&!$('choice').classList.contains('on'))pauseGame();
+    else if(gstate===GS.PAUSED)resumeGame();
+  }
+  if(gstate===GS.CUTSCENE&&!busy&&Input.hit('enter',' ','e'))Cut.advance();
+  if(gstate===GS.MENU){Menu.update(dt);Menu.draw()}
+  else if(gstate===GS.CUTSCENE){Cut.update(dt);Cut.draw()}
+  else if(PLAY.includes(gstate)){Game.update(dt);Game.render()}
+  Input.flush();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+setTimeout(()=>fade.classList.remove('on'),60); // fade in inicial do menu
+</script>
+</body>
+</html>
