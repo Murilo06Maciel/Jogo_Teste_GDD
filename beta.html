@@ -852,7 +852,9 @@ const Game={
   },
   // ----- Região Helíaca: chegada, ataque e fracasso -----
   enterHelia(){
+    if(this.mode==='forest')this.mode='helia';
     if(this.mode!=='helia')return;
+    this.syncStage();
     this.heliaT=0;this.heliaIntro=false;this.heliaFailed=false;this.heliaAttack=false;this.harpies=[];
     Clock.t=.1;Clock.step(0,false);
   },
@@ -1292,7 +1294,7 @@ const ROOMS={
   props:[['hut',200,300,36],['hut',360,262,36],['hut',700,282,36],['hut',860,372,36],['well',500,410,18],['campfire',480,330,12],['hen',320,448,6],['hen',600,466,6],['hay',250,444,16],['fence',150,420,5],['tree',90,486,16],['tree',885,492,16],['tree',600,236,16]]},
  bosque1:{name:'Bosque de Transição',area:'forest',mode:'forest',outdoor:true,shade:.3,doors:[{x:820,to:'bosque2',sx:130,sy:330,label:'Trilha',c1:'#d8e8a8',c2:'#4a6a3a'}],enter(){Clock.t=.62;Clock.step(0,false)},
   props:genTrees(11,(x,y)=>distSeg(x,y,150,490,830,125)>80)},
- bosque2:{name:'Bosque de Transição',area:'forest',mode:'forest',outdoor:true,shade:.3,doors:[{side:'R',y1:220,y2:430,to:'helia',sx:110,sy:400}],
+ bosque2:{name:'Bosque de Transição',area:'forest',mode:'forest',outdoor:true,shade:.3,doors:[{side:'R',y1:220,y2:430,to:'helia',sx:110,sy:400,mode:'helia'}],
   props:genTrees(23,(x,y)=>Math.abs(y-(330+Math.sin(x*.012)*45))>78)},
  helia:{name:'Eleutéria (Cidade Principal)',area:'helia',outdoor:true,sky:['#6fb0e8','#f7e8c0'],enter(){Game.enterHelia()},
   doors:[{x:120,to:'periferia',sx:800,label:'Periferia',needs:'sq'},{x:330,to:'quiron',sx:780,label:'Acampamento de Quíron',needs:'sq',mode:'sq'},{x:600,to:'monte',sx:160,label:'Oros',needs:'sq'},{x:830,to:'porto',sx:160,label:'Thalassa',needs:'sq'}],
