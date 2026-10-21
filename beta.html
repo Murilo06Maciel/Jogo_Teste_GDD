@@ -559,15 +559,15 @@ const setSlot=(k,c,on)=>{S[k].style.setProperty('--c',c);S[k].classList.toggle('
 
 const Game={
   state:'dialogue',t:0,hitstop:0,shake:0,msg:'',msgT:0,endT:0,result:'',
-  player:new Player(),boss:null,artur:null,lord:null,king:null,arturN:null,mode:'castle',young:true,room:'hall',npcs:[],props:[],dmgBonus:0,allNpcs:[],lt:'',playerName:'',armed:true,noWeapon:false,visitedOut:false,nightTrig:false,vilaT:0,villageAlert:false,heliaT:0,heliaIntro:false,heliaFailed:false,heliaCombat:false,harpies:[],guards:[],inst:null,quiron:null,quironN:null,armorBonus:0,trophies:[],venda:false,blind:false,quests:{},track:0,foeQ:[],foeQuest:0,heliaAttack:false,nearNpc:false,saveFlash:0,petrQ:[],nextPetr:0,
-  get combat(){const m=this.mode;return m==='tutorial'||m==='train'||m==='test'||(m==='escape'&&this.room==='gate'&&this.armed)||(m==='mission'&&this.room!=='quiron'&&!!this.boss&&!this.boss.dead)||(m==='sq'&&!!this.boss&&!this.boss.dead)},
+  player:new Player(),boss:null,artur:null,lord:null,king:null,arturN:null,mode:'castle',young:true,room:'hall',npcs:[],props:[],dmgBonus:0,allNpcs:[],lt:'',playerName:'',armed:true,noWeapon:false,visitedOut:false,nightTrig:false,guardCall:false,guardN:null,vilaT:0,villageAlert:false,heliaT:0,heliaIntro:false,heliaFailed:false,heliaCombat:false,harpies:[],guards:[],inst:null,quiron:null,quironN:null,armorBonus:0,trophies:[],venda:false,blind:false,quests:{},track:0,foeQ:[],foeQuest:0,heliaAttack:false,nearNpc:false,saveFlash:0,petrQ:[],nextPetr:0,
+  get combat(){const m=this.mode;return this.duel||m==='tutorial'||m==='train'||m==='test'||(m==='escape'&&this.room==='gate'&&this.armed)||(m==='mission'&&this.room!=='quiron'&&!!this.boss&&!this.boss.dead)||(m==='sq'&&!!this.boss&&!this.boss.dead)},
   syncStage(){
     const m=this.mode;
     gstate=m==='escape'?GS.FUGA:m==='golpe'?GS.GOLPE:m==='village'?(this.villageAlert?GS.FUGA_SEM_ARMAS:GS.VILA):m==='forest'?GS.BOSQUE:m==='helia'?(this.heliaAttack?GS.ATAQUE:GS.HELIACA):m==='train'?GS.TREINO:m==='test'?GS.TESTE:m==='mission'?GS.MISSAO:m==='sq'?GS.SQ:m==='return'?GS.RETORNO:GS.CASTLE;
   },
   rp(){const p=this.player;p.reset();p.maxHp=100+this.armorBonus;p.hp=p.maxHp},
   initCastle(){
-    this.mode='castle';this.young=true;this.boss=DUMMY;this.armed=true;this.nightTrig=false;this.visitedOut=false;this.playerName='';
+    this.mode='castle';this.duel=false;this.young=true;this.boss=DUMMY;this.armed=true;this.nightTrig=false;this.guardCall=false;this.guardN=null;this.visitedOut=false;this.playerName='';
     this.armorBonus=0;this.trophies=[];this.venda=false;this.blind=false;this.quests={};this.track=0;this.guards=[];this.heliaAttack=false;this.villageAlert=false;
     this.allNpcs=NPC_DEFS.map(d=>new NPC(d));
     this.king=new NPC(KING_DEF);this.arturN=new NPC(ARTUR_ESC);this.quironN=new NPC(QUI_DEF);this.lord=this.lord||new OrderLord();
@@ -587,7 +587,7 @@ const Game={
     (d.hs||[]).forEach(([nm,k])=>{const n=this.allNpcs.find(x=>x.name===nm);if(n){n.mute=true;if(k===2)n.dead=true;else{n.petrified=true;n.pal=PAL_STONE}}});
     this.mode=d.mode||'castle';this.visitedOut=true;
     if(this.playerName)$('who').textContent=this.playerName;
-    this.rp();this.setRoom(d.room,d.x,d.y);
+    this.rp();this.setRoom(d.room,d.x,d.y);if(this.mode==='castle'&&this.nightTrig)this.callGuard(true);
     if(this.mode==='helia')this.heliaIntro=true;
     Clock.t=d.t;Clock.step(0,false);this.syncStage();this.state='explore';
   },
@@ -600,6 +600,7 @@ const Game={
     let L=this.allNpcs.filter(n=>n.room===id);
     L=m==='sq'?L.filter(n=>n.sqOnly||(n.lore&&n.mute)):L.filter(n=>!n.sqOnly);
     if(m==='village'&&this.villageAlert)L=L.concat(this.guards);
+    if(m==='castle'&&this.guardCall&&this.guardN){const g=this.guardN,p=this.player;g.room=id;g.x=clamp(p.x+70,A.x1+20,A.x2-20);g.y=p.y;L=L.concat(g)}
     return L;
   },
   mBoss(k){return k==='medusa'?new Medusa():k==='cerbero'?new Cerbero():new Minotauro()},
@@ -693,10 +694,7 @@ const Game={
   // ----- laço de exploração -----
   modeTick(dt){
     const p=this.player,m=this.mode;
-    if(m==='castle'&&!this.nightTrig&&this.allTalked()&&Clock.t>=.6&&Clock.t<.9){
-      this.nightTrig=true;this.state='dialogue';$('prompt').style.display='none';
-      Dlg.say([{n:'Guarda Real',t:'Vossa Alteza, a noite se aproxima. É hora de retornar ao Palácio.'}],true,()=>this.toKing());return;
-    }
+    if(m==='castle'&&!this.nightTrig&&this.allTalked()&&Clock.t>=.72&&Clock.t<.9){this.callGuard();return}
     if(m==='escape'&&this.room==='gate'&&!this.armed){
       if(Math.random()<.25)parts.push(new Particle(480+rnd(-18,18),392,rnd(-8,8),rnd(-50,-20),.9,'#e8f4ff',2));
       if(Math.hypot(p.x-480,p.y-400)<30){this.armed=true;this.noWeapon=false;this.lord.mode='fight';this.lord.cd=1.2;SFX.clang();Dlg.say([art('Isso! Agora derrube-o, Alteza!')],false)}
@@ -759,16 +757,41 @@ const Game={
     const block=lines=>{p.y=A.y1+80;this.state='dialogue';$('prompt').style.display='none';Dlg.say(lines,true,()=>{this.state='explore'})};
     if(d.needs==='alert'&&!this.villageAlert)return block([{n:'{n}',t:'Ainda não tenho razão para deixar a vila... e não sei para onde iria.'}]);
     if(d.needs==='mission'&&this.mode!=='mission')return block([qi(this.mode==='sq'?'Esses guardiões já caíram.':'Ainda não, aprendiz.')]);
-    if(d.needs==='sq'&&this.mode!=='sq')return block([{n:'{n}',t:'Ainda não é hora de ir até lá.'}]);
+    if(d.needs==='sq'&&this.mode!=='sq')return block([this.mode==='helia'?{n:'{n}',t:'Os portões das outras cidades estão fechados. Antes, preciso ouvir todos os moradores de Eleutéria ('+this.allNpcs.filter(n=>n.lore&&n.talked).length+'/'+this.allNpcs.filter(n=>n.lore).length+'). Algo ruim está para acontecer, e as cidades só se abrirão depois que eu treinar com Quíron e vencer os três guardiões.'}:this.mode==='mission'?qi('As cidades podem esperar, aprendiz. Primeiro, os três guardiões.'):{n:'{n}',t:'Ainda não é hora de ir até lá.'}]);
     if((this.mode==='sq'||this.mode==='mission')&&this.boss&&this.boss!==DUMMY&&!this.boss.dead)return block([{n:'Narrador',t:'A saída está selada: não há como fugir da luta.'}]);
     if(this.mode==='escape'&&!((this.room==='gallery'&&d.to==='gate')||(this.room==='gate'&&d.to==='gallery')))return block([art('Por aí não, Alteza! O fogo e os traidores tomaram tudo!')]);
     this.state='wait';$('prompt').style.display='none';
     transition(()=>{if(d.mode)this.mode=d.mode;this.setRoom(d.to,d.sx,d.sy||A.y1+80);Input.keys={};this.state='explore';this.syncStage()});
   },
   // ----- noite, golpe e fuga -----
+  callGuard(quiet){
+    this.nightTrig=true;this.guardCall=true;
+    this.guardN=new NPC({room:this.room,x:0,y:0,name:'Guarda Real',wp:'spear',follow:true,pal:{armor:'#6f7885',trim:'#c8a15a',cape:'#244a86',skin:'#d2a27c',hair:'#3a2a1a',leg:'#262a35',eye:'#222'},
+      lines:['Vossa Alteza! A noite caiu sobre Aroer. É hora de retornar ao palácio.','O Rei Aldren o aguarda no Salão do Trono. Ele deseja falar com o senhor antes que durma.','Venha, eu o acompanho.'],onEnd(){Game.toKing()}});
+    this.npcs=this.roomNpcs(this.room);
+    if(!quiet){SFX.door();toast('Cai a noite. Um Guarda Real vem ao seu encontro: fale com ele (ESPAÇO)')}
+  },
   toKing(){
-    this.state='wait';
+    this.guardCall=false;this.state='wait';
     transition(()=>{this.mode='golpe';Clock.t=.8;Clock.step(0,false);this.setRoom('hall',480,450);this.syncStage();this.state='explore'});
+  },
+  offerDuel(){
+    this.state='dialogue';
+    askChoice('Duelo amistoso com o Capitão Artur',['[ ACEITAR BATALHA ]','[ RECUSAR / CONTINUAR EXPLORANDO ]'],i=>{if(i===0)this.startDuel();else this.state='explore'});
+  },
+  startDuel(){
+    this.state='wait';$('prompt').style.display='none';
+    transition(()=>{
+      this.duel=true;this.rp();
+      const a=this.duelA=this.duelA||new Artur();a.reset();a.mode='fight';a.bars=true;a.cd=1;
+      this.npcs=this.npcs.filter(x=>x.name!=='Capitão Artur');
+      this.boss=a;this.player.x=330;this.player.y=440;parts.length=0;this.syncStage();this.state='fight';
+      Dlg.say([art('Sem reverências, Alteza. Mostre o que aprendeu!')],false);
+    });
+  },
+  endDuel(won){
+    this.duel=false;this.rp();this.setRoom('garden',480,450);this.syncStage();this.state='dialogue';
+    Dlg.say([art(won?'Magnífico, Alteza! Nem eu esperava tanta firmeza. O reino está em boas mãos.':'Bom combate, Alteza! Respire fundo e volte quando quiser a revanche.')],true,()=>{this.state='explore'});
   },
   startGolpe(){
     this.state='wait';$('prompt').style.display='none';
@@ -782,6 +805,7 @@ const Game={
     });
   },
   retry(){
+    if(this.duel){this.endDuel(false);return}
     this.rp();
     if(this.mode==='escape'){this.lord.reset();this.armed=false;this.setRoom('gate',480,470)}
     else if(this.mode==='test'){this.quiron.reset();this.quiron.mode='fight';this.quiron.cd=1.5;this.setRoom('quiron',480,470)}
@@ -789,6 +813,7 @@ const Game={
     this.state='explore';this.syncStage();
   },
   afterBoss(){
+    if(this.duel){this.endDuel(true);return}
     if(this.mode==='mission'){this.missionWin();return}
     if(this.mode==='sq'){this.foeDone();return}
     this.state='dialogue';
@@ -945,8 +970,8 @@ const Game={
     if(Input.hit('v')&&this.venda&&this.combat)this.blind=!this.blind;
     if(this.hitstop>0){this.hitstop-=dt;return}
     this.shake=Math.max(0,this.shake-40*dt);this.msgT=Math.max(0,this.msgT-dt);
-    if(Input.hit('t')&&(this.mode==='castle'||this.mode==='sq')){const n=(Clock.t+.08)%1;Clock.t=(this.mode==='castle'&&!this.allTalked()&&n>=.56&&n<.9)?.55:n}
-    Clock.step(dt,(this.mode==='forest'||this.mode==='sq'||(this.mode==='castle'&&(this.allTalked()||Clock.t<.56)))&&this.state!=='wait');
+    if(Input.hit('t')&&!this.guardCall&&(this.mode==='castle'||this.mode==='sq')){const n=(Clock.t+.08)%1;Clock.t=(this.mode==='castle'&&!this.allTalked()&&n>=.56&&n<.9)?.55:n}
+    Clock.step(dt,(this.mode==='forest'||this.mode==='sq'||(this.mode==='castle'&&!this.guardCall&&(this.allTalked()||Clock.t<.56)))&&this.state!=='wait');
     parts.forEach(p=>p.update(dt));
     for(let i=parts.length-1;i>=0;i--)if(parts[i].life<=0)parts.splice(i,1);
     if(this.room==='garden'){
@@ -980,7 +1005,9 @@ const Game={
     S.diario.style.display=this.mode==='sq'?'flex':'none';setSlot('diario',0,Journal.on);
     {const tr=$('trophies'),on=this.mode==='mission'||this.mode==='sq'||this.mode==='return';tr.style.display=on?'block':'none';
      if(on)tr.textContent=['Cabeça de Medusa','Corrente de Cérbero','Chifres do Minotauro'].map(t=>(this.trophies.includes(t)?'◆ ':'◇ ')+t).join('\n');
-     $('track').textContent=this.mode==='sq'?this.trackText():''}
+     $('track').textContent=this.mode==='sq'?(this.trackText()||'Cidades abertas: Oros, Thalassa e a Periferia. Fale com as pessoas (J: diário). Quíron encerra a jornada'):
+       (this.mode==='castle'&&this.guardCall)?'Objetivo: fale com o Guarda Real (ESPAÇO)':(this.mode==='helia'&&!this.heliaAttack&&this.heliaIntro)?'Objetivo: converse com os moradores de Eleutéria ('+this.allNpcs.filter(n=>n.lore&&n.talked).length+'/'+this.allNpcs.filter(n=>n.lore).length+')':
+       (this.mode==='mission'&&this.trophies.length<3)?'Objetivo: vença os 3 guardiões ('+this.trophies.length+'/3). As outras cidades abrem depois disso':this.mode==='train'?'Objetivo: aprenda com Quíron':''}
   },
   render(){
     if(this.mode==='scene'){Scene.render();return}
@@ -1018,9 +1045,7 @@ const Game={
 /* ============ ARTUR (Capitão da Guarda Real) ============ */
 const PAL_A={armor:'#4a6a9a',trim:'#e0bb62',cape:'#244a86',skin:'#d2a27c',hair:'#6a4a2a',leg:'#262a35',eye:'#222'};
 class Artur extends Boss{
-  reset(){super.reset();Object.assign(this,{x:W/2+150,y:230,r:16,hp:110,maxHp:110,ghost:110,pal:PAL_A,spear:false,name:'CAPITÃO ARTUR',mode:'idle',bars:false,dmgMul:.7,cdMul:2,noPhase:true,cd:1.6})}
-  get spd(){return .6}
-  get m(){return 1.5}
+  reset(){super.reset();Object.assign(this,{x:W/2+150,y:230,r:16,hp:110,maxHp:110,ghost:110,pal:PAL_A,spear:false,name:'CAPITÃO ARTUR',mode:'idle',bars:false,dmgMul:1,cdMul:1,noPhase:true,cd:1.6})}
   get immune(){return this.mode!=='fight'}
   update(dt,p){
     if(this.state==='move'&&this.mode!=='fight'){
@@ -1034,7 +1059,7 @@ class Artur extends Boss{
     }
     super.update(dt,p);
   }
-  onDeath(){this.dead=false;this.hp=0;this.state='stun';this.stunT=99;this.atk=null;Tut.complete()}
+  onDeath(){this.dead=false;this.hp=0;this.state='stun';this.stunT=99;this.atk=null;if(Game.duel){Game.win();return}Tut.complete()}
 }
 
 /* ============ JARDIM DO CASTELO (cenário do tutorial) ============ */
@@ -1205,20 +1230,27 @@ const Tut={
      txt:()=>'Segure o botão direito e bloqueie o golpe',prog:()=>Tut.cnt,done:()=>Tut.cnt>=1,ev(n){if(n==='block')Tut.cnt=1}},
     {lines:[art('Muito bem! Mas nem todo golpe se bloqueia. Para escapar, use a esquiva: aperte Espaço andando na direção desejada.')],
      txt:()=>'Esquive com a Barra de Espaço',prog:()=>Tut.cnt,done:()=>Tut.cnt>=1,ev(n){if(n==='dash')Tut.cnt=1}},
-    {lines:[art('Chega de lições soltas. Um combate amistoso! Use tudo o que aprendeu, e também o golpe pesado com SHIFT esquerdo.'),art('Vou pegar leve... um pouco.')],
+    {lines:[art('Você dominou os comandos, Alteza. Agora a prova final: um combate de verdade contra mim. Use tudo o que aprendeu, inclusive o golpe pesado com SHIFT esquerdo.'),art('Não vou me conter: um príncipe merece um adversário à altura. O treino só termina quando o senhor me vencer.')],
      start(){const a=Game.inst;a.mode='fight';a.bars=true;a.cd=1},
-     txt:()=>'Combate de teste: derrote Artur',prog:()=>1-Game.inst.hp/Game.inst.maxHp,done:()=>false}
+     txt:()=>'Prova final: derrote o Capitão Artur',prog:()=>1-Game.inst.hp/Game.inst.maxHp,done:()=>false}
   ],
-  begin(){this.i=-1;this.act=false;this.delay=0;this.next()},
+  begin(){show('choice',false);this.i=-1;this.act=false;this.delay=0;this.next()},
   next(){
     this.i++;const s=this.steps[this.i];
     if(!s){this.end();return}
     this.cnt=0;this.moved=0;this.act=false;$('obj').classList.remove('on');
     Game.state='dialogue';
-    Dlg.say(s.lines,true,()=>{
+    const go=()=>{
       Game.state='fight';this.act=true;this.px=Game.player.x;this.py=Game.player.y;this.lt='';
       if(s.start)s.start();$('obj').classList.add('on');
-    });
+    };
+    if(s.opt){ // etapa opcional: o jogador escolhe aceitar ou recusar a batalha amistosa
+      Dlg.say(s.lines,true,()=>askChoice('Batalha amistosa com Artur',['Aceitar batalha','Recusar / avançar'],i=>{
+        if(i===0)go();else this.end();
+      }));
+      return;
+    }
+    Dlg.say(s.lines,true,go);
   },
   ev(n){const s=this.steps[this.i];if(this.act&&s&&s.ev)s.ev(n)},
   update(dt){
@@ -1250,10 +1282,12 @@ const ROOMS={
  kitchen:{name:'Cozinha Real',area:'castle',doors:[{x:160,to:'gallery',sx:630,label:'Galeria Real'}],hearth:true,torches:[[300,250],[660,250],[160,490],[810,490]],pillars:[[250,440],[710,440]],carpet:'h',carpetCol:'#4a3a2c',banners:[],windows:[]},
  gate:{name:'Pátio do Portão',area:'castle',doors:[{x:160,to:'gallery',sx:840,label:'Galeria Real'},{x:400,to:'garden',sx:810,label:'Jardim Real'},{x:700,to:'aroer',sx:160,label:'Portões do Castelo',gate:true,c1:'#ffe9a8',c2:'#c28a3a'}],torches:[[330,250],[560,250],[150,490],[810,490]],pillars:[[250,440],[710,440]],carpet:'v',banners:[270,550],windows:[]},
  garden:{name:'Jardim do Castelo',area:'castle',outdoor:true,doors:[{x:810,to:'gate',sx:400,label:'Pátio do Portão'}],props:[['lamp',330,215,6],['lamp',630,215,6]]},
- aroer:{name:'Aroer: Campos e Feira',area:'aroer',outdoor:true,sky:['#6fa8dc','#f6e7b0'],lights:[[60,48,45],[260,48,45]],doors:[{x:160,to:'gate',sx:700,label:'Portões do Castelo',gate:true,c1:'#2a2030',c2:'#0e0a12'}],
+ aroer:{name:'Aroer: Zona Urbana (Praça e Feira)',area:'aroer',outdoor:true,sky:['#6fa8dc','#f6e7b0'],lights:[[60,48,45],[260,48,45]],doors:[{x:160,to:'gate',sx:700,label:'Portões do Castelo',gate:true,c1:'#2a2030',c2:'#0e0a12'},{x:360,to:'aroer_rural',sx:780,label:'Campos de Aroer (Zona Rural)',c1:'#e8d8a0',c2:'#8a7040'}],
+  props:[['well',480,300,18],['stall',420,360,30,'spice'],['stall',540,360,30,'cloth'],['stall',650,300,30,'fruit'],['cart',380,472,22],['crate',432,484,10],['barrel',590,474,12],
+   ['house',745,250,38],['inn',810,330,48],['forge',800,470,34],['lamp',280,330,6],['lamp',570,440,6],['lamp',470,470,6],['lamp',700,400,6],['tree',90,495,16],['tree',885,505,16]]},
+ aroer_rural:{name:'Aroer: Zona Rural (Campos)',area:'aroer',outdoor:true,sky:['#6fa8dc','#f6e7b0'],doors:[{x:780,to:'aroer',sx:360,label:'Praça e Feira (Zona Urbana)',c1:'#e8d8a0',c2:'#8a7040'}],
   props:[['barn',210,262,46],['hay',120,425,16],['hay',165,450,14],['cow',250,420,14],['cow',315,458,14],['cow',200,478,14],['fence',230,388,5],['fence',290,388,5],['fence',350,388,5],['scarecrow',130,340,10],
-   ['well',470,300,18],['stall',420,360,30,'spice'],['stall',540,360,30,'cloth'],['stall',650,300,30,'fruit'],['cart',380,472,22],['crate',432,484,10],['barrel',590,474,12],['lamp',360,300,6],['lamp',570,440,6],['lamp',470,470,6],
-   ['house',745,250,38],['inn',810,330,48],['forge',800,470,34],['lamp',700,400,6],['tree',90,495,16],['tree',885,505,16]]},
+   ['scarecrow',560,330,10],['hay',640,450,16],['hay',700,472,14],['fence',500,410,5],['fence',560,410,5],['fence',620,410,5],['lamp',700,300,6],['lamp',430,300,6],['tree',90,495,16],['tree',885,505,16],['tree',470,495,16]]},
  vila:{name:'Vila do Exílio',area:'village',mode:'village',outdoor:true,sky:['#78acd8','#f4e2b4'],doors:[{x:820,to:'bosque1',sx:150,sy:470,label:'Trilha do Bosque',c1:'#bfe0a0',c2:'#4a7a3a',needs:'alert'}],
   props:[['hut',200,300,36],['hut',360,262,36],['hut',700,282,36],['hut',860,372,36],['well',500,410,18],['campfire',480,330,12],['hen',320,448,6],['hen',600,466,6],['hay',250,444,16],['fence',150,420,5],['tree',90,486,16],['tree',885,492,16],['tree',600,236,16]]},
  bosque1:{name:'Bosque de Transição',area:'forest',mode:'forest',outdoor:true,shade:.3,doors:[{x:820,to:'bosque2',sx:130,sy:330,label:'Trilha',c1:'#d8e8a8',c2:'#4a6a3a'}],enter(){Clock.t=.62;Clock.step(0,false)},
@@ -1329,22 +1363,24 @@ const NPC_DEFS=[
  {room:'garden',x:330,y:340,name:'Capitão Artur',wp:'sword',pal:PAL_A,
   lines:['Alteza! Veio treinar mais? Hoje me contento em vigiar as roseiras.',
    'O senhor mudou desde a primeira lição. Os golpes estão firmes, a guarda está certa.',
-   'Mas lembre-se: o motivo pelo qual se luta importa mais que a força do braço.']},
+   'Mas lembre-se: o motivo pelo qual se luta importa mais que a força do braço.',
+   'Quer pôr isso à prova num duelo amistoso? Desta vez não vou pegar leve.'],
+  onEnd(){Game.offerDuel()}},
  {room:'garden',x:700,y:300,name:'Jardineiro Silas',pal:{armor:'#4a6a3a',trim:'#8a6a3a',cape:'#3a4a2a',skin:'#c79d7b',hair:'#c8c4b8',leg:'#3a3a2a',eye:'#222'},
   lines:['Cuidado com as roseiras, Alteza! Esta aqui é a favorita do Rei Aldren.',
    'Cuido deste jardim há trinta anos. Dizem os velhos que as fadas vinham dançar aqui antigamente.',
    'Hoje ninguém mais vê nada. Mas, na primavera, as roseiras amanhecem com orvalho em círculos perfeitos... coincidência, claro.']},
  // ---- Campos e arredores ----
- {room:'aroer',x:200,y:355,name:'Fazendeiro Osric',pal:{armor:'#6a5a3a',trim:'#9a8a4a',cape:'#4a3a22',skin:'#c2926a',hair:'#6a5a3a',leg:'#3a3022',eye:'#222'},
+ {room:'aroer_rural',x:200,y:355,name:'Fazendeiro Osric',pal:{armor:'#6a5a3a',trim:'#9a8a4a',cape:'#4a3a22',skin:'#c2926a',hair:'#6a5a3a',leg:'#3a3022',eye:'#222'},
   lines:['Alteza! Cuidado onde pisa, o trigo está quase no ponto.',
    'A terra de Aroer é escura e generosa. Dois bons invernos de chuva e a colheita deste ano será a melhor em dez.',
    'Além do trigo, crio alguns bois e galinhas. Gado dá trabalho de manhã e de noite, mas é ele que paga o sal e as ferramentas.',
    'Vida no campo é isto: acordar com o sol, deitar com a lua e rezar para o tempo ajudar. Terra boa pede mão, chuva e paz. Das três, a paz é a mais difícil de colher.']},
- {room:'aroer',x:330,y:340,name:'Camponesa Wilma',pal:{armor:'#4a6a5a',trim:'#c8a15a',cape:'#3a5a4a',skin:'#d9b08c',hair:'#5a3a2a',leg:'#3a4a3a',eye:'#222'},
+ {room:'aroer_rural',x:330,y:340,name:'Camponesa Wilma',pal:{armor:'#4a6a5a',trim:'#c8a15a',cape:'#3a5a4a',skin:'#d9b08c',hair:'#5a3a2a',leg:'#3a4a3a',eye:'#222'},
   lines:['Acordo antes do sol e durmo depois da lua, Alteza. Mas não reclamo.',
    'À noite, às vezes ouço coisas na mata ao fim dos campos. O povo diz que é o vento. Eu já nem tenho certeza.',
    'Seu pai passou por aqui uma vez, a pé, sem guarda. Pediu um copo de água ao meu marido. Nunca esquecemos.']},
- {room:'aroer',x:285,y:395,name:'Pastor Tomé',pal:{armor:'#7a6a4a',trim:'#8a7a5a',cape:'#5a4a32',skin:'#c79d7b',hair:'#8a7a6a',leg:'#3a3228',eye:'#222'},
+ {room:'aroer_rural',x:285,y:395,name:'Pastor Tomé',pal:{armor:'#7a6a4a',trim:'#8a7a5a',cape:'#5a4a32',skin:'#c79d7b',hair:'#8a7a6a',leg:'#3a3228',eye:'#222'},
   lines:['Muu... ah, perdão, Alteza. Falo tanto com as vacas que já me confundo.',
    'São quarenta cabeças. Dão leite para a cidade e carne para as festas do castelo. Cada uma tem nome, e não, não conto os nomes.',
    'À noite eu as recolho no curral. Já vi sombras rondando a cerca, nada que uma tocha não afaste... por enquanto.']},
@@ -1511,6 +1547,9 @@ function buildOutdoor(id){
     [[560,66],[640,58],[730,70],[820,62],[900,68]].forEach(([x,y])=>{g.fillStyle='#7a3a2a';g.beginPath();g.moveTo(x-32,y+14);g.lineTo(x,y-16);g.lineTo(x+32,y+14);g.fill();g.fillStyle='#d9c9a2';g.fillRect(x-26,y+14,52,26)});
     bricks(20,310,44,118);g.fillStyle='#8a7a64';for(let x=20;x<310;x+=40)g.fillRect(x+4,34,22,12);
     [60,260].forEach(x=>{g.fillStyle='#8a7a64';g.fillRect(x-24,0,48,A.y1);g.fillStyle='#7a2a2a';g.beginPath();g.moveTo(x-30,0);g.lineTo(x,-30);g.lineTo(x+30,0);g.fill();g.fillStyle='#1a1410';g.fillRect(x-3,40,6,16)});
+  }else if(id==='aroer_rural'){
+    hills([['#8aa870',66,1],['#6a8c58',92,3]]);treeline('#24482a');
+    [[120,66],[330,60],[540,68],[900,62]].forEach(([x,y])=>{g.fillStyle='#7a3a2a';g.beginPath();g.moveTo(x-30,y+14);g.lineTo(x,y-14);g.lineTo(x+30,y+14);g.fill();g.fillStyle='#d9c9a2';g.fillRect(x-24,y+14,48,22)});
   }else if(id==='vila'){
     hills([['#8aa870',74,2],['#6a8c58',96,4]]);treeline('#2a5030');
   }else if(forest){
@@ -1527,7 +1566,7 @@ function buildOutdoor(id){
     else if(og.bg==='maze'){bricks(0,W,60,92);g.fillStyle='#7a7060';for(let x=0;x<W;x+=40)g.fillRect(x+4,50,22,12)}
   }
   // ---- chão ----
-  const GR=({aroer:['#3c5e2e','#6a944a'],vila:['#4a6a34','#7a9a4a'],bosque1:['#1c3a1e','#2e5a2e'],bosque2:['#1c3a1e','#2e5a2e'],helia:['#cfc6b4','#eee6d2']})[id]||og.gr;
+  const GR=({aroer:['#3c5e2e','#6a944a'],vila:['#4a6a34','#7a9a4a'],aroer_rural:['#3c5e2e','#6a944a'],bosque1:['#1c3a1e','#2e5a2e'],bosque2:['#1c3a1e','#2e5a2e'],helia:['#cfc6b4','#eee6d2']})[id]||og.gr;
   g.fillStyle=GR[0];g.fillRect(0,A.y1,W,H-A.y1);
   const fl=[ptF(0,0),ptF(1,0),ptF(1,1),ptF(0,1)];
   let gr=g.createLinearGradient(0,A.y1,0,A.y2);gr.addColorStop(0,GR[0]);gr.addColorStop(1,GR[1]);
@@ -1535,14 +1574,17 @@ function buildOutdoor(id){
   const blades=n=>{for(let i=0;i<n;i++){const x=rnd(A.x1,A.x2),y=rnd(A.y1,A.y2);g.strokeStyle=Math.random()<.5?'rgba(20,50,15,.35)':'rgba(170,210,110,.22)';g.beginPath();g.moveTo(x,y);g.lineTo(x+rnd(-2,2),y-rnd(3,7));g.stroke()}};
   if(id==='aroer'){
     blades(1300);
-    // plantações (esquerda, ao fundo)
-    for(let k=0;k<5;k++){const f0=.1+k*.07,f1=f0+.04;g.fillStyle=k%2?'#c9a43a':'#b88f2a';poly([ptF(.04,f0),ptF(.3,f0),ptF(.3,f1),ptF(.04,f1)]);g.fill()}
-    for(let i=0;i<260;i++){const q=ptF(rnd(.04,.3),rnd(.1,.4));g.strokeStyle='rgba(120,80,20,.4)';g.beginPath();g.moveTo(q[0],q[1]);g.lineTo(q[0]+rnd(-2,2),q[1]-rnd(3,8));g.stroke()}
-    // estrada de terra do portão e praça da feira (calçada)
+    // estrada de terra do portão e praça calçada (zona urbana)
     g.fillStyle='#9a7e52';poly([ptF(.05,0),ptF(.2,0),ptF(.34,.6),ptF(.2,1),ptF(.05,1)]);g.fill();
-    g.fillStyle='#8a8070';poly([ptF(.3,.3),ptF(1,.3),ptF(1,1),ptF(.3,1)]);g.fill();
-    for(let i=0;i<700;i++){const q=ptF(rnd(.32,.99),rnd(.32,.99));g.fillStyle=`rgba(${Math.random()<.5?0:255},${Math.random()<.5?0:240},${Math.random()<.5?0:220},${rnd(.05,.12)})`;g.beginPath();g.ellipse(q[0],q[1],rnd(6,12),rnd(3,6),0,0,7);g.fill()}
-    g.strokeStyle='rgba(0,0,0,.22)';g.lineWidth=1;for(let i=0;i<=8;i++){const a=ptF(.3,.3+i*.0875),b=ptF(1,.3+i*.0875);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke()}
+    g.fillStyle='#8a8070';poly([ptF(0,.3),ptF(1,.3),ptF(1,1),ptF(0,1)]);g.fill();
+    for(let i=0;i<900;i++){const q=ptF(rnd(.01,.99),rnd(.32,.99));g.fillStyle=`rgba(${Math.random()<.5?0:255},${Math.random()<.5?0:240},${Math.random()<.5?0:220},${rnd(.05,.12)})`;g.beginPath();g.ellipse(q[0],q[1],rnd(6,12),rnd(3,6),0,0,7);g.fill()}
+    g.strokeStyle='rgba(0,0,0,.22)';g.lineWidth=1;for(let i=0;i<=8;i++){const a=ptF(0,.3+i*.0875),b=ptF(1,.3+i*.0875);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke()}
+  }else if(id==='aroer_rural'){
+    blades(1500);
+    for(let k=0;k<5;k++){const f0=.08+k*.07,f1=f0+.04;g.fillStyle=k%2?'#c9a43a':'#b88f2a';poly([ptF(.04,f0),ptF(.3,f0),ptF(.3,f1),ptF(.04,f1)]);g.fill()}
+    for(let i=0;i<260;i++){const q=ptF(rnd(.04,.3),rnd(.08,.4));g.strokeStyle='rgba(120,80,20,.4)';g.beginPath();g.moveTo(q[0],q[1]);g.lineTo(q[0]+rnd(-2,2),q[1]-rnd(3,8));g.stroke()}
+    for(let k=0;k<3;k++){const f0=.66+k*.1,f1=f0+.05;g.fillStyle=k%2?'#7a9a3a':'#8aa844';poly([ptF(.5,f0),ptF(.78,f0),ptF(.78,f1),ptF(.5,f1)]);g.fill()}
+    g.fillStyle='#9a7e52';poly([ptF(.72,0),ptF(.86,0),ptF(.64,.55),ptF(.42,1),ptF(.26,1),ptF(.5,.5)]);g.fill();
   }else if(id==='vila'){
     blades(1400);g.fillStyle='rgba(150,120,80,.7)';poly([ptF(.7,0),ptF(.88,0),ptF(.6,.5),ptF(.4,.5)]);g.fill();poly([ptF(.25,.35),ptF(.75,.35),ptF(.75,.6),ptF(.25,.6)]);g.fill();
   }else if(forest){
