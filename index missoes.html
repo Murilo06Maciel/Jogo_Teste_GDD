@@ -592,7 +592,7 @@ const Game={
     if(this.playerName)$('who').textContent=this.playerName;
     this.rp();this.setRoom(d.room,d.x,d.y);if(this.mode==='castle'&&this.nightTrig)this.callGuard(true);
     if(this.mode==='helia')this.heliaIntro=true;
-    Clock.t=d.t;Clock.step(0,false);this.syncStage();this.state='explore';
+    Clock.t=d.t;Clock.step(0,false);this.syncStage();this.state='explore';this.campArrive=false;
   },
   // ----- salas, NPCs, chefes -----
   roomNpcs(id){
@@ -733,13 +733,14 @@ const Game={
     const pr=$('prompt');
     if(near){pr.style.display='block';pr.textContent='[ESPAÇO] Conversar com '+near.name}
     else if(mo){pr.style.display='block';pr.textContent='[ESPAÇO] '+mo.label}
-    else if(door&&!door.hidden){pr.style.display='block';pr.textContent='▲ '+door.label}
+    else if(door&&!door.hidden){pr.style.display='block';pr.textContent=(door.portal?'[ESPAÇO] ':'▲ ')+door.label}
     else pr.style.display='none';
-    if(Input.hit(' ')){if(near){this.talk(near);return}if(mo){this.collect(mo);return}}
+    if(Input.hit(' ')){if(near){this.talk(near);return}if(mo){this.collect(mo);return}if(door&&door.portal){this.useDoor(door);return}}
     if(side){this.useDoor(side);return}
-    if(door&&p.y<A.y1+p.r+8)this.useDoor(door);
+    if(door&&!door.portal&&p.y<A.y1+p.r+8)this.useDoor(door);
   },
   talk(n){
+    if(n===this.quironN&&this.mode==='camp'){this.campQuiron();return}
     if(n.tqs&&this.mode==='camp'){this.tqTalk(n);return}
     if(n.quest){this.questTalk(n);return}
     this.state='dialogue';$('prompt').style.display='none';
@@ -901,6 +902,7 @@ const Game={
     }
   },
   enterSanct(){
+    if(this.mode==='camp'){this.campArrive=true;return}
     if(this.mode!=='sanct')return;
     this.armed=false;this.noWeapon=true;this.warrior=false;this.wooden=false;Clock.t=.1;Clock.step(0,false);
     if(this.sanctIntro)return;this.sanctIntro=true;
@@ -922,21 +924,19 @@ const Game={
     transition(()=>{
       this.mode='camp';this.armed=true;this.noWeapon=false;this.wooden=true;this.warrior=false;this.armorBonus=0;this.blind=false;
       this.pots=Math.max(this.pots,1);this.mkCamp();$('obj').classList.remove('on');this.rp();
-      this.setRoom('quiron',480,470);this.syncStage();this.state='explore';
-      toast('Treino livre: fale com os moradores do santuário (J: diário, Q: poção)');
+      this.setRoom('quiron',480,470);this.campArrive=false;this.syncStage();this.state='explore';
+      toast('Entre no Portal do Treino (ESPAÇO) para começar os exercícios. J: diário, Q: poção');
     });
   },
   tqs(id){return this.tq[id]||(this.tq[id]={s:'none',k:0,got:[]})},
   campSetup(){
     const id=this.room,on=k=>this.tqs(k).s==='act';
     this.pend=[];this.tgt=[];this.foeQ=[];
-    if(id==='quiron'){
-      if(on(1)){this.blind=true;this.pend=[[340,2.2,0,150],[395,2.7,2,170],[450,3,4,140]].map(([y,w,ph,amp])=>({y,w,ph,amp,x:480,cd:0,sc:0}))}
-      if(on(5))this.tgt=[[400,1.6,0,110],[435,2.2,2,140],[465,1.9,4,90]].map(([y,w,ph,amp])=>({y,w,ph,amp,x:480,fl:0}));
-      if(on(7))this.boss=new Mach();
-    }
-    if(id==='encosta'&&on(6)){const n=4-this.tqs(6).k;if(n>0){this.foeQ=Array(n).fill('lobo');this.spawnFoe()}}
-    if(id==='pico'&&this.tqs(9).s!=='act'&&this.tqs(9).s!=='none')this.props=this.props.filter(q=>q[0]!=='ice');
+    if(id==='tq1'&&on(1)){this.blind=true;this.pend=[[340,2.2,0,150],[395,2.7,2,170],[450,3,4,140]].map(([y,w,ph,amp])=>({y,w,ph,amp,x:480,cd:0,sc:0}))}
+    if(id==='tq5'&&on(5))this.tgt=[[400,1.6,0,110],[435,2.2,2,140],[465,1.9,4,90]].map(([y,w,ph,amp])=>({y,w,ph,amp,x:480,fl:0}));
+    if(id==='tq7'&&on(7))this.boss=new Mach();
+    if(id==='tq6'&&on(6)){const n=4-this.tqs(6).k;if(n>0){this.foeQ=Array(n).fill('lobo');this.spawnFoe()}}
+    if(id==='tq9'&&this.tqs(9).s!=='act'&&this.tqs(9).s!=='none')this.props=this.props.filter(q=>q[0]!=='ice');
   },
   tqObjs(){
     const L=[];TQ.forEach(q=>{const st=this.tqs(q.id);if(st.s!=='act'||!q.items)return;q.items.forEach((o,i)=>{if(o.room===this.room&&!st.got.includes(i))L.push({...o,tq:q.id,i})})});return L;
@@ -960,7 +960,7 @@ const Game={
   },
   tqReward(q){
     const st=this.tqs(q.id),pk=this.perks=this.perks||{};st.s='done';this.state='explore';
-    if(q.id===10){this.giveGear();return}
+    if(q.id===10){toast('Prova da Vontade cumprida. O portal o leva de volta ao Santuário.');this.state='wait';transition(()=>{this.setRoom('quiron',480,400);this.syncStage();this.state='explore'});return}
     Object.assign(pk,q.perk||{});
     if(q.id===4)this.pots=Math.min(this.potMax,this.pots+2);
     if(q.id===9){this.potMax+=2;this.pots=Math.min(this.potMax,this.pots+1)}
@@ -969,7 +969,7 @@ const Game={
   },
   tqText(){
     const q=TQ.find(x=>x.id===this.tqTr&&['act','ready'].includes(this.tqs(x.id).s))||TQ.find(x=>['act','ready'].includes(this.tqs(x.id).s));
-    if(!q)return 'Treino livre: fale com os mestres do santuário (J: diário). A Prova da Vontade, com Quíron, encerra o treino';
+    if(!q)return TQ.every(x=>this.tqs(x.id).s==='done')?'Todos os exercícios concluídos: volte ao Santuário de Quíron pelos portais':'Fale com o mestre desta área ou use os portais: Avançar / Voltar (ESPAÇO). Área: '+ROOMS[this.room].name;
     const st=this.tqs(q.id);
     return 'Missão: '+q.title+' — '+(st.s==='ready'?'fale com '+q.who:q.obj+(q.g?' ('+(st.k|0)+'/'+q.g+')':''));
   },
@@ -996,7 +996,8 @@ const Game={
   },
   tqTick(dt){
     const p=this.player,on=k=>this.tqs(k).s==='act';
-    if(this.room==='pico'&&Math.random()<.6)parts.push(new Particle(A.x1,rnd(A.y1,A.y2),rnd(260,420),rnd(-20,20),rnd(.8,1.4),'#dfe8ee',1.4));
+    if(this.campArrive&&this.room==='quiron'){this.campArrive=false;this.campQuiron();return}
+    if((this.room==='tq3'||this.room==='tq9')&&Math.random()<.6)parts.push(new Particle(A.x1,rnd(A.y1,A.y2),rnd(260,420),rnd(-20,20),rnd(.8,1.4),'#dfe8ee',1.4));
     (this.pend||[]).forEach(q=>{ // Reflexo Cego: o som guia a esquiva
       q.x=480+Math.sin(this.t*q.w+q.ph)*q.amp;q.cd-=dt;q.sc-=dt;
       const d=Math.hypot(p.x-q.x,p.y-q.y);
@@ -1006,7 +1007,7 @@ const Game={
         else if(d<22&&p.hurt<=0){q.cd=.9;p.takeDamage(5,q.x,q.y,DUMMY)}
       }
     });
-    if(on(3)&&this.room==='pico'){ // Silêncio da Mente
+    if(on(3)&&this.room==='tq3'){ // Silêncio da Mente
       const st=this.tqs(3),d=Math.hypot(p.x-480,p.y-300);
       if(d<46&&Input.down('m2')&&!p.moving){st.k=Math.min(10,st.k+dt);if(st.k>=10)this.tqReady(tqq(3))}else st.k=0;
     }
@@ -1017,7 +1018,7 @@ const Game={
         a.q5=1;const hit=this.tgt.find(q=>Math.hypot(q.x-p.x,q.y-p.y)<a.d.range+14&&Math.abs(angDiff(Math.atan2(q.y-p.y,q.x-p.x),a.ang))<=a.d.arc/2);
         if(hit){hit.fl=1;SFX.clang();this.tqCount(5)}else{if(this.tqs(5).k>0)toast('Sequência perdida: recomece');this.tqs(5).k=0}
       }
-      if(a.type==='heavy'&&!a.q9&&on(9)&&this.room==='pico'){
+      if(a.type==='heavy'&&!a.q9&&on(9)&&this.room==='tq9'){
         a.q9=1;const ic=this.props.find(q=>q[0]==='ice');
         if(ic&&Math.hypot(ic[1]-p.x,ic[2]-p.y)<a.d.range+24&&Math.abs(angDiff(Math.atan2(ic[2]-p.y,ic[1]-p.x),a.ang))<=a.d.arc/2){
           this.props=this.props.filter(q=>q!==ic);burst(ic[1],ic[2]-20,'#bfe8ff',30,260,.9,3);this.tqReady(tqq(9));
@@ -1026,6 +1027,15 @@ const Game={
     }
   },
   campFoeDone(){this.foeQ.shift();this.state='explore';this.tqCount(6);if(this.foeQ.length)this.spawnFoe();else this.boss=DUMMY},
+  campQuiron(){
+    this.state='dialogue';$('prompt').style.display='none';
+    if(!TQ.every(q=>this.tqs(q.id).s==='done')){
+      Dlg.say([qi('Sua disciplina ainda está incompleta. Volte e termine todos os exercícios antes de me encarar novamente.')],true,()=>{this.state='explore'});return;
+    }
+    Dlg.say([qi('Dez exercícios, nenhum atalho. Você voltou diferente de quando subiu.'),
+      qi('Chega de madeira. Esta é a Espada de Aço: golpe leve no botão esquerdo, golpe pesado no SHIFT. E esta, a Armadura de Guerreiro. Pesa mais que a culpa, e protege melhor.'),
+      qi('Agora, o teste. Não é uma luta até a morte: quero ver sua postura e sua esquiva. E eu não vou me conter.')],true,()=>this.giveGear());
+  },
   usePotion(){
     const p=this.player;
     if(this.pots>0&&p.hp<p.maxHp&&!p.dead&&['explore','fight'].includes(this.state)){this.pots--;p.hp=Math.min(p.maxHp,p.hp+45);toast('Poção usada: +45 de vida');burst(p.x,p.y-24,'#6adf7a',14,160,.6,3)}
@@ -1165,6 +1175,7 @@ const Game={
     list.push({y:p.y,f:()=>drawPlayer(p)},{y:b.y,f:()=>drawBoss(b)});
     list.sort((u,v)=>u.y-v.y).forEach(o=>o.f());
     drawSlashes(p,b);
+    R.doors.forEach(d=>{if(!d.portal)return;const k=.6+.4*Math.sin(this.t*3+d.x),cx=d.x,cy=A.y1-30;ctx.globalCompositeOperation='lighter';const g=ctx.createRadialGradient(cx,cy,2,cx,cy,70);g.addColorStop(0,'rgba('+d.pc+','+(.55*k)+')');g.addColorStop(1,'rgba('+d.pc+',0)');ctx.fillStyle=g;ctx.fillRect(cx-70,cy-70,140,140);ctx.globalCompositeOperation='source-over'});
     parts.forEach(pt=>pt.draw(ctx));
     R.outdoor?gardenLight(p,this.lightList()):lighting(p,this.fireLights());
     if(this.mode==='escape'){ctx.fillStyle='rgba(120,30,10,.26)';ctx.fillRect(0,0,W,H)}
@@ -1453,7 +1464,7 @@ const ROOMS={
  cav_ferro:{name:'Caverna de Ferro-Espelho',area:'helia',tone:40,fc:['#262a30','#4a525c'],carpet:'none',banners:[],windows:[],torches:[[200,260],[760,260],[200,490],[760,490]],pillars:[[400,440],[560,440]],doors:[{x:480,to:'porto',sx:800,label:'Saída',needs:'sq'}]},
  ginasio:{name:'Ginásio Tradicionalista',area:'helia',tone:80,fc:['#5a4a34','#9a8460'],carpet:'none',banners:[190,770],windows:[],torches:[[200,260],[760,260],[200,490],[760,490]],pillars:[[260,440],[700,440]],doors:[{x:480,to:'monte',sx:480,label:'Saída',needs:'sq'}]},
  quiron:{name:'Santuário de Quíron',area:'quiron',outdoor:true,og:'monte',sky:['#7fb0e0','#f4e6c0'],enter(){Game.enterSanct()},props:[['dummy',190,310,14],['dummy',300,260,14],['dummy',720,300,14],['rack',790,250,22],['rack',140,420,22],['campfire',830,440,14],['rubble',620,470,10],['tree',90,490,16]],
-  doors:[{x:290,to:'encosta',sx:480,sy:470,label:'Encosta Selvagem',needs:'camp'},{x:670,to:'pico',sx:480,sy:470,label:'Topo da Montanha',needs:'camp'},{x:200,to:'templo',sx:480,sy:470,label:'Templo Esquecido',needs:'mission'},{x:380,to:'ruinas',sx:480,sy:470,label:'Ruínas Subterrâneas',needs:'mission'},{x:560,to:'labirinto',sx:480,sy:470,label:'Labirinto',needs:'mission'},{x:780,to:'helia',sx:330,label:'Região Helíaca',needs:'sq',mode:'sq'}]},
+  doors:[{x:480,to:'tq1',sx:240,label:'Portal do Treino: Área 1',needs:'camp',portal:true,pc:'255,210,120',c1:'#ffe9a8',c2:'#c28a3a'},{x:200,to:'templo',sx:480,sy:470,label:'Templo Esquecido',needs:'mission'},{x:380,to:'ruinas',sx:480,sy:470,label:'Ruínas Subterrâneas',needs:'mission'},{x:560,to:'labirinto',sx:480,sy:470,label:'Labirinto',needs:'mission'},{x:780,to:'helia',sx:330,label:'Região Helíaca',needs:'sq',mode:'sq'}]},
  trilha1:{name:'Trilha Rochosa',area:'quiron',mode:'climb',outdoor:true,og:'monte',sky:['#7fb0e0','#f4e6c0'],sp:[480,470],crit:[[760,350],[200,255],[660,255]],
   holes:[[60,395,590,45],[330,285,560,45],[60,185,370,45],[540,185,360,45]],props:[['rubble',150,470,10],['rubble',850,300,10],['rubble',600,350,10]],
   enter(){Clock.t=.1;Clock.step(0,false);Dlg.say([{n:'{n}',t:'Sem arma, só pernas e fôlego. Os abismos cortam a trilha: preciso contorná-los. E as criaturas... Espaço me faz rolar para longe.'}],false)},
@@ -1461,14 +1472,28 @@ const ROOMS={
  trilha2:{name:'Despenhadeiro',area:'quiron',mode:'climb',outdoor:true,og:'monte',sky:['#7fb0e0','#f4e6c0'],sp:[480,470],crit:[[250,365],[720,365],[300,250],[680,250]],
   holes:[[60,400,330,45],[500,400,390,45],[200,290,520,45],[60,185,260,45],[640,185,260,45]],props:[['rubble',130,330,10],['rubble',860,330,10]],
   doors:[{x:480,to:'quiron',sx:480,sy:470,label:'Santuário de Quíron',mode:'sanct'}]},
- encosta:{name:'Encosta Selvagem',area:'quiron',mode:'camp',outdoor:true,og:'selvagem',sky:['#7fb0e0','#f4e6c0'],crit:[[260,300],[700,330],[480,250],[480,430]],
-  props:[['tree',90,490,16],['tree',880,490,16],['tree',470,495,16],['rubble',350,380,10],['rubble',600,300,10]],doors:[{x:480,to:'quiron',sx:290,sy:470,label:'Santuário de Quíron'}]},
- pico:{name:'Topo da Montanha',area:'quiron',mode:'camp',outdoor:true,og:'monte',sky:['#7fb0e0','#f4e6c0'],
-  props:[['cave',150,320,4],['cave',810,330,4],['cave',330,250,4],['perch',480,300,1],['ice',700,225,22],['rubble',250,380,10],['rubble',640,400,10]],doors:[{x:480,to:'quiron',sx:670,sy:470,label:'Santuário de Quíron'}]},
  templo:{name:'Templo Esquecido',area:'quiron',boss:'medusa',tone:96,fc:['#6a665c','#b8b0a0'],carpet:'none',banners:[],windows:[],torches:[[200,260],[760,260],[200,490],[760,490]],pillars:[[300,230],[660,230],[300,440],[660,440]],doors:[{x:480,to:'quiron',sx:480,sy:440,label:'Arena de Quíron'}]},
  ruinas:{name:'Ruínas Subterrâneas',area:'quiron',boss:'cerbero',tone:34,fc:['#1c1a18','#34302a'],carpet:'none',banners:[],windows:[],torches:[[200,260],[760,260],[200,490],[760,490]],pillars:[[260,330],[700,330]],props:[['rubble',330,430,10],['rubble',640,430,10],['rubble',480,470,10]],doors:[{x:480,to:'quiron',sx:480,sy:440,label:'Arena de Quíron'}]},
  labirinto:{name:'Labirinto do Minotauro',area:'quiron',boss:'minotauro',tone:50,fc:['#262420','#3e3a34'],carpet:'none',banners:[],windows:[],torches:[[150,250],[810,250],[150,490],[810,490]],pillars:[],props:[['blk',220,300,24],['blk',270,300,24],['blk',700,300,24],['blk',750,300,24],['blk',240,450,24],['blk',720,450,24],['blk',480,420,24]],doors:[{x:480,to:'quiron',sx:480,sy:440,label:'Arena de Quíron'}]}
 };
+const TA=[
+ ['Reflexo Cego','monte',[['rubble',140,470,10],['rubble',860,460,10]]],
+ ['Forja de Madeira','selvagem',[['tree',90,490,16],['tree',880,490,16],['tree',470,495,16]],[[300,300],[700,330],[480,250],[480,430]]],
+ ['Silêncio da Mente','monte',[['perch',480,300,1],['rubble',250,400,10],['rubble',720,420,10]]],
+ ['Ervas de Cura','monte',[['cave',300,420,4],['cave',810,330,4],['cave',560,250,4]]],
+ ['Alvos em Movimento','periferia',[['rubble',120,450,10],['rubble',860,440,10]]],
+ ['Lobos da Rocha','selvagem',[['tree',90,490,16],['tree',880,490,16],['rubble',480,330,10]]],
+ ['Peso do Escudo','arredores',[]],
+ ['Lenda do Antigo Mestre','monte',[['rubble',340,360,10],['rubble',640,380,10]]],
+ ['Nascente Congelada','monte',[['ice',700,225,22],['rubble',300,380,10]]],
+ ['Prova da Vontade','periferia',[['tree',90,490,16],['tree',880,490,16]]]
+];
+TA.forEach(([t,og,props,crit],i)=>{ // sequência: Santuário <-> Área 1 <-> ... <-> Área 10 -> Santuário
+  const n=i+1,last=n===10;
+  ROOMS['tq'+n]={name:'Área '+n+': '+t,area:'quiron',mode:'camp',outdoor:true,og,sky:['#7fb0e0','#f4e6c0'],props,crit:crit||[],
+    doors:[{x:240,to:n===1?'quiron':'tq'+(n-1),sx:n===1?480:720,sy:n===1?400:undefined,label:'Voltar: '+(n===1?'Santuário':'Área '+(n-1)),portal:true,pc:'120,170,255',c1:'#a8c8ff',c2:'#3a5a9a'},
+           {x:720,to:last?'quiron':'tq'+(n+1),sx:last?480:240,sy:last?400:undefined,label:'Avançar: '+(last?'Santuário':'Área '+(n+1)),portal:true,pc:'255,210,120',c1:'#ffe9a8',c2:'#c28a3a'}]};
+});
 const NPC_DEFS=[
  // ---- Castelo ----
  {room:'hall',x:350,y:340,name:'Sir Cedric',wp:'spear',pal:{armor:'#6f7885',trim:'#c8a15a',cape:'#244a86',skin:'#d2a27c',hair:'#3a2a1a',leg:'#262a35',eye:'#222'},
@@ -2055,7 +2080,7 @@ const QACC=[{n:'{n}',t:'Não vou descer. Vi Aroer queimar: meu pai, meu povo, tu
  {n:'{n}',t:'Então o motivo é este: ninguém deveria perder o que eu perdi sem ter ao menos o direito de lutar. Prefiro morrer tentando a viver impotente outra vez.'},
  qi('...'),qi('Sua voz tremeu, e ainda assim você não recuou. Poucos fazem isso.'),
  qi('Muito bem. Eu o ensino. Mas saiba: aqui, sua vida é minha até que eu diga o contrário.')];
-const QUI_DEF={room:'quiron',x:480,y:290,name:'Mestre Quíron',tqs:[1,7,10],wp:'spear',pal:PAL_Q,lines:[''],
+const QUI_DEF={room:'quiron',x:480,y:290,name:'Mestre Quíron',wp:'spear',pal:PAL_Q,lines:[''],
   linesFn(){if(Game.mode==='sanct')return Game.qStage?QACC:QREF;const n=Game.trophies.length;return Game.mode==='sq'?[qi('As missões da região são suas para escolher. Quando estiver pronto, diga: entregamos os troféus.')]:n===0?[qi('Os guardiões esperam: o Templo Esquecido, as Ruínas Subterrâneas e o Labirinto. As portas atrás de mim levam a eles.'),qi('Use a Venda (V) contra a Medusa. Traga a cabeça, a corrente e os chifres.')]:[qi('Ainda faltam provas. Não volte de mãos vazias.')]},
   onEnd(){if(Game.mode==='sq')Game.askReturn();else if(Game.mode==='sanct')Game.sanctNext()}};
 const BOSS_INTRO={medusa:'Medusa mantém uma Venda sobre os olhos. Quando a retira, o olhar petrifica quem estiver à frente. Vista a Venda (V) quando o cone vermelho surgir.',cerbero:'Das ruínas ecoa um uivo triplo: Cérbero, preso a uma corrente de aço, desperta. É rápido: esquive nas investidas.',minotauro:'No labirinto, o Minotauro raspa o chão. Se errar a investida e bater na parede, ficará atordoado.'};
@@ -2122,34 +2147,34 @@ const TQ=[
  {id:1,title:'O Teste do Reflexo Cego',giver:'Quíron',who:'Quíron',g:5,obj:'Esquive dos pêndulos (Espaço) no tempo exato',desc:'Vendado, desvie de pêndulos e pedras guiando-se pelo som: 5 esquivas perfeitas.',
   offer:['Os olhos mentem na pressa. O ouvido, não.','Vou vendá-lo. Pêndulos de madeira cruzarão o terreiro: guie-se pelo som e esquive-se com o Espaço no instante exato. Cinco vezes.'],
   remind:['Escute o balanço. Esquive quando o som estiver sobre você.'],done:['Cinco vezes, de olhos vendados. Seu corpo já escuta mais do que seu medo.'],after:'Os pêndulos continuam lá. O corpo não esquece.',perk:{iframes:1},msg:'Reflexos Aguçados: o dash dura mais tempo invulnerável.'},
- {id:2,title:'A Forja de Madeira Rígida',giver:'Ferreiro Nikos',who:'Nikos',g:4,obj:'Colete lenhas de carvalho rochoso na Encosta Selvagem',desc:'Coletar 4 lenhas de carvalho rochoso, desviando das pequenas bestas da montanha.',
+ {id:2,title:'A Forja de Madeira Rígida',giver:'Ferreiro Nikos',who:'Nikos',g:4,obj:'Colete 4 lenhas de carvalho rochoso nesta área',desc:'Coletar 4 lenhas de carvalho rochoso, desviando das pequenas bestas da montanha.',
   offer:['As espadas de madeira do santuário racharam até o miolo. Quíron as destrói em um mês.','Preciso de carvalho rochoso, que só cresce na encosta. Traga quatro lenhas, mas cuidado com as bestas: elas defendem o que é delas.'],
-  remind:['Quatro lenhas de carvalho rochoso, na Encosta Selvagem. Desvie das bestas (Espaço).'],done:['Carvalho de primeira! Reforço o cabo, forro o fio com ferro velho... pronto. Esta espada de treino aguenta mais que o seu braço.','Quando Quíron lhe der a lâmina real, ao menos já saberá o peso de uma boa arma.'],after:'A forja nunca esfria.',perk:{oak:1},msg:'Espada de treino reforçada.',
-  items:[[200,250],[760,260],[300,430],[700,440]].map(([x,y])=>({room:'encosta',x,y,label:'Lenha de carvalho rochoso',kind:'lenha',auto:true}))},
+  remind:['Quatro lenhas de carvalho rochoso, aqui na área. Desvie das bestas (Espaço).'],done:['Carvalho de primeira! Reforço o cabo, forro o fio com ferro velho... pronto. Esta espada de treino aguenta mais que o seu braço.','Quando Quíron lhe der a lâmina real, ao menos já saberá o peso de uma boa arma.'],after:'A forja nunca esfria.',perk:{oak:1},msg:'Espada de treino reforçada.',
+  items:[[200,250],[760,260],[300,430],[700,440]].map(([x,y])=>({room:'tq2',x,y,label:'Lenha de carvalho rochoso',kind:'lenha',auto:true}))},
  {id:3,title:'O Silêncio da Mente',giver:'Monge Ermitão',who:'o Monge Ermitão',g:10,obj:'Medite na pedra elevada do topo: botão direito, imóvel, 10 s',desc:'Meditar em ponto elevado, sob vento forte, segurando a defesa por 10 segundos sem mover o personagem.',
   offer:['Shh... O vento aqui é forte demais para quem só pensa em golpes.','O combate começa na respiração. Suba à pedra elevada do topo, segure a guarda (botão direito) e fique imóvel por dez segundos.'],
   remind:['A pedra elevada, no topo. Botão direito, imóvel, dez segundos.'],done:['Você não se moveu, e o vento passou por você. A calma é a mais rápida das armas.'],after:'O vento ainda sopra. Eu também.',perk:{calm:1},msg:'Mente Serena: estamina recupera 15% mais rápido.'},
  {id:4,title:'A Caça às Ervas de Cura',giver:'Herbalista Montanhesa',who:'a Herbalista',g:3,obj:'Encontre 3 Ervas do Sangue nas cavernas rasas do topo',desc:'Encontrar 3 Ervas do Sangue nas cavernas rasas do topo da montanha.',
   offer:['O treino de Quíron deixa um rastro de feridas, e minhas raízes acabaram.','Há Ervas do Sangue nas cavernas rasas do topo da montanha. Traga três, e preparo poções para você.'],
   remind:['Três Ervas do Sangue, nas cavernas rasas do topo.'],done:['Ervas frescas! Prepare-se: aqui estão poções de cura. Use-as com a tecla Q.'],after:'Volte se sangrar demais.',perk:{},msg:'Poções de cura adicionais (tecla Q).',
-  items:[[150,332],[810,342],[330,262]].map(([x,y])=>({room:'pico',x,y,label:'Erva do Sangue',kind:'erva',auto:true}))},
+  items:[[300,432],[810,342],[560,262]].map(([x,y])=>({room:'tq4',x,y,label:'Erva do Sangue',kind:'erva',auto:true}))},
  {id:5,title:'O Desafio dos Alvos em Movimento',giver:'Boneco Mecânico',who:'o Boneco Mecânico',g:6,obj:'Acerte 6 ataques leves seguidos nos alvos (vire-se com WASD)',desc:'Acertar 6 ataques leves seguidos em alvos móveis, mantendo a orientação correta.',
   offer:['*clac* Alvos móveis de madeira, acionados por molas. Quíron me mandou ativá-los.','Acerte seis golpes leves seguidos. Vire-se para o alvo com W, A, S, D antes de golpear: golpe errado zera a sequência.'],
   remind:['*clac* Seis golpes leves seguidos. Vire-se para o alvo.'],done:['*clac* Seis golpes seguidos. Precisão registrada.'],after:'*clac* Alvos em repouso.',perk:{arc:1},msg:'Mira Afiada: o arco de corte dos ataques fica mais nítido.'},
- {id:6,title:'A Ameaça dos Lobos da Rocha',giver:'Caçador da Montanha',who:'o Caçador',g:4,obj:'Derrote 4 Lobos da Rocha na Encosta Selvagem',desc:'Derrotar 4 Lobos da Rocha que atacam os suprimentos do santuário.',
-  offer:['Lobos da Rocha rondam os suprimentos do santuário. Já levaram metade da carne seca.','Na encosta há quatro deles. São menores e mais fracos que um homem, mas atacam em investidas rápidas.'],
-  remind:['Quatro lobos na Encosta Selvagem. Esquive das investidas.'],done:['Quatro lobos, nenhuma baixa. Tome esta capa de pelo: aquece contra o frio do topo.'],after:'A carne seca está a salvo.',perk:{fur:1},msg:'Capa de Pelo (estética e proteção contra o frio).'},
+ {id:6,title:'A Ameaça dos Lobos da Rocha',giver:'Caçador da Montanha',who:'o Caçador',g:4,obj:'Derrote os 4 Lobos da Rocha desta área',desc:'Derrotar 4 Lobos da Rocha que atacam os suprimentos do santuário.',
+  offer:['Lobos da Rocha rondam os suprimentos do santuário. Já levaram metade da carne seca.','Por aqui há quatro deles. São menores e mais fracos que um homem, mas atacam em investidas rápidas.'],
+  remind:['Quatro lobos nesta área. Esquive das investidas.'],done:['Quatro lobos, nenhuma baixa. Tome esta capa de pelo: aquece contra o frio do topo.'],after:'A carne seca está a salvo.',perk:{fur:1},msg:'Capa de Pelo (estética e proteção contra o frio).'},
  {id:7,title:'O Peso do Escudo',giver:'Quíron',who:'Quíron',g:3,obj:'Apare 3 investidas do Aríete de Treino (botão direito no instante exato)',desc:'Executar 3 bloqueios perfeitos contra as investidas mecânicas de treino.',
   offer:['Segunda lição de postura: um escudo pesa quando o braço esquece o motivo.','Vou soltar o Aríete de Treino. Apare três investidas no instante exato, com o botão direito, sem quebrar sua guarda.'],
   remind:['Três paradas perfeitas contra o Aríete. No instante do golpe, não antes.'],done:['Três paradas, e a guarda inteira. Agora seu braço sabe o que o corpo pesa.'],after:'O Aríete descansa.',perk:{guard:1},msg:'Guarda Firme: bloquear gasta menos estamina.'},
- {id:8,title:'A Lenda do Antigo Mestre',giver:'Tumba Antiga',who:'a Tumba Antiga',g:3,obj:'Leia as 3 placas de pedra do Topo da Montanha',desc:'Ler as 3 placas de pedra do topo e responder a uma pergunta de Quíron.',
+ {id:8,title:'A Lenda do Antigo Mestre',giver:'Tumba Antiga',who:'a Tumba Antiga',g:3,obj:'Leia as 3 placas de pedra desta área',desc:'Ler as 3 placas de pedra do topo e responder a uma pergunta de Quíron.',
   offer:['(Uma lápide coberta de líquen, ao lado do santuário. As inscrições falam de três placas de pedra espalhadas pelo topo do morro.)'],
   remind:['(Faltam placas de pedra. Procure-as espalhadas pelo topo do morro.)'],done:['(As três placas, juntas, contam a origem da disciplina helíaca: um juramento antigo de proteger os fracos.)','(Passos atrás de você. Quíron lê a lápide sobre o seu ombro.)'],after:'(Silêncio. Só a pedra.)',perk:{lore:1},msg:'Sabedoria Helíaca: o lore do combate da região foi registrado.',
   quiz:{t:'Quíron pergunta: de onde vem a disciplina de um guerreiro?',o:['Do medo de perder.','De um motivo maior do que a própria dor.','Da força dos braços.'],ok:1,good:'Sim. Foi o que os antigos gravaram. Lembre-se disso quando a espada pesar.',other:'Parte da verdade. Releia as placas: eles gravaram outra coisa.'},
-  items:[[200,440,'Primeira placa: "O guerreiro helíaco não nasce forte: nasce disposto a repetir."'],[480,462,'Segunda placa: "Disciplina é o nome que a coragem usa nos dias comuns."'],[780,440,'Terceira placa: "Quem luta para ser temido se perde; quem luta para proteger encontra o caminho."']].map(([x,y,text])=>({room:'pico',x,y,label:'Ler a placa de pedra',kind:'stone',text}))},
- {id:9,title:'A Água da Nascente Congelada',giver:'Servo do Santuário',who:'o Servo',g:0,obj:'Suba ao Topo da Montanha e quebre o gelo com um Ataque Pesado (SHIFT)',desc:'Subir ao ponto mais alto e quebrar o bloco de gelo da nascente com um Ataque Pesado.',
+  items:[[200,440,'Primeira placa: "O guerreiro helíaco não nasce forte: nasce disposto a repetir."'],[480,462,'Segunda placa: "Disciplina é o nome que a coragem usa nos dias comuns."'],[780,440,'Terceira placa: "Quem luta para ser temido se perde; quem luta para proteger encontra o caminho."']].map(([x,y,text])=>({room:'tq8',x,y,label:'Ler a placa de pedra',kind:'stone',text}))},
+ {id:9,title:'A Água da Nascente Congelada',giver:'Servo do Santuário',who:'o Servo',g:0,obj:'Quebre o gelo da nascente com um Ataque Pesado (SHIFT)',desc:'Subir ao ponto mais alto e quebrar o bloco de gelo da nascente com um Ataque Pesado.',
   offer:['O poço do santuário congelou, e o mestre não bebe água de degelo.','A nascente fica no ponto mais alto do morro, sob um bloco de gelo grosso. Só um Ataque Pesado (SHIFT) o racha.'],
-  remind:['O gelo fica no Topo da Montanha. Ataque Pesado (SHIFT) de frente para ele.'],done:['A água corre outra vez! O santuário agradece. Costurei bolsos novos no seu cinto: você carrega mais poções agora.'],after:'A água corre limpa.',perk:{},msg:'Limite máximo de poções aumentado.'},
+  remind:['O gelo fica aqui nesta área. Ataque Pesado (SHIFT) de frente para ele.'],done:['A água corre outra vez! O santuário agradece. Costurei bolsos novos no seu cinto: você carrega mais poções agora.'],after:'A água corre limpa.',perk:{},msg:'Limite máximo de poções aumentado.'},
  {id:10,title:'A Prova da Vontade',giver:'Quíron',who:'Quíron',g:3,obj:'Responda às perguntas de Quíron',desc:'Encarar o medo de Aroer e reafirmar o propósito de proteger os inocentes. Recompensa: Espada de Aço e Armadura de Guerreiro.',
   offer:['Antes de lhe dar aço, preciso saber a quem ele vai servir.','Não responda com a cabeça. Responda com o que você viu naquela noite em Aroer.'],remind:[''],done:[''],after:'',perk:{},msg:''}
 ];
@@ -2159,14 +2184,17 @@ const Q10Q=[
  {t:'Se um dia a sua espada servir mais à raiva do que aos inocentes, o que você é?',o:['Um vingador, e isso basta.','Um guerreiro perdido: devo lembrar por que luto.','Um rei, e reis não prestam contas.'],ok:1}
 ];
 const CAMP_DEFS=[
- {room:'quiron',x:360,y:350,name:'Ferreiro Nikos',tqs:[2],pal:{armor:'#5a4a3a',trim:'#c8a15a',cape:'#3a2a1e',skin:'#c79d7b',hair:'#2a1a12',leg:'#3a2a1e',eye:'#222'}},
- {room:'pico',x:560,y:340,name:'Monge Ermitão',tqs:[3],pal:{armor:'#a8844a',trim:'#e8dcc0',cape:'#7a5a2a',skin:'#c9966e',hair:'#d8d4c8',leg:'#8a6a3a',eye:'#222'}},
- {room:'quiron',x:600,y:355,name:'Herbalista Montanhesa',tqs:[4],pal:{armor:'#4a6a4a',trim:'#c8b060',cape:'#2a4a2a',skin:'#dcb08c',hair:'#6a3a2a',leg:'#3a4a3a',eye:'#222'}},
- {room:'quiron',x:290,y:430,name:'Boneco Mecânico',tqs:[5],pal:{armor:'#8a6a3a',trim:'#5a4228',cape:'#5a4228',skin:'#b89a62',hair:'#5a4228',leg:'#5a4228',eye:'#222'}},
- {room:'quiron',x:780,y:400,name:'Caçador da Montanha',tqs:[6],pal:{armor:'#6a5a3a',trim:'#a8884a',cape:'#4a3a22',skin:'#c79d7b',hair:'#3a2a1a',leg:'#3a2e22',eye:'#222'}},
- {room:'quiron',x:190,y:370,name:'Servo do Santuário',tqs:[9],pal:{armor:'#6a6a7a',trim:'#9a9aaa',cape:'#4a4a5a',skin:'#d9b08c',hair:'#2a1a12',leg:'#3a3a4a',eye:'#222'}},
- {room:'quiron',x:700,y:455,name:'Tumba Antiga',tqs:[8],mute:false,pal:{armor:'#8a867c',trim:'#a8a498',cape:'#6a665c',skin:'#9a968c',hair:'#7a766c',leg:'#6a665c',eye:'#777'}}
-];
+ [1,'Mestre Quíron',PAL_Q,'spear'],
+ [2,'Ferreiro Nikos',{armor:'#5a4a3a',trim:'#c8a15a',cape:'#3a2a1e',skin:'#c79d7b',hair:'#2a1a12',leg:'#3a2a1e',eye:'#222'}],
+ [3,'Monge Ermitão',{armor:'#a8844a',trim:'#e8dcc0',cape:'#7a5a2a',skin:'#c9966e',hair:'#d8d4c8',leg:'#8a6a3a',eye:'#222'}],
+ [4,'Herbalista Montanhesa',{armor:'#4a6a4a',trim:'#c8b060',cape:'#2a4a2a',skin:'#dcb08c',hair:'#6a3a2a',leg:'#3a4a3a',eye:'#222'}],
+ [5,'Boneco Mecânico',{armor:'#8a6a3a',trim:'#5a4228',cape:'#5a4228',skin:'#b89a62',hair:'#5a4228',leg:'#5a4228',eye:'#222'}],
+ [6,'Caçador da Montanha',{armor:'#6a5a3a',trim:'#a8884a',cape:'#4a3a22',skin:'#c79d7b',hair:'#3a2a1a',leg:'#3a2e22',eye:'#222'}],
+ [7,'Mestre Quíron',PAL_Q,'spear'],
+ [8,'Tumba Antiga',{armor:'#8a867c',trim:'#a8a498',cape:'#6a665c',skin:'#9a968c',hair:'#7a766c',leg:'#6a665c',eye:'#777'}],
+ [9,'Servo do Santuário',{armor:'#6a6a7a',trim:'#9a9aaa',cape:'#4a4a5a',skin:'#d9b08c',hair:'#2a1a12',leg:'#3a3a4a',eye:'#222'}],
+ [10,'Mestre Quíron',PAL_Q,'spear']
+].map(([id,name,pal,wp])=>({room:'tq'+id,x:160,y:280,name,tqs:[id],pal,wp}));
 class Mach extends Boss{ // Aríete de Treino: imune, só serve para treinar a defesa
   reset(){super.reset();Object.assign(this,{x:W/2,y:230,r:18,hp:999,maxHp:999,ghost:999,pal:{armor:'#8a6a3a',trim:'#5a4228',cape:'#5a4228',skin:'#b89a62',hair:'#5a4228',leg:'#5a4228',eye:'#222'},spear:false,name:'ARÍETE DE TREINO',bars:false,noPhase:true,dmgMul:.7,cd:1.2})}
   get immune(){return true}
@@ -2191,7 +2219,7 @@ const Journal={
   close(){this.on=false;show('journal',false)},
   toggle(){this.on?this.close():this.open()},
   render(){
-    if(Game.mode==='camp'){$('jb').innerHTML=TQ.map(q=>{const st=Game.tqs(q.id),a=st.s==='act'||st.s==='ready',cls=a?'act':st.s==='done'?'done':'',lab=st.s==='act'?'Em andamento':st.s==='ready'?'Retornar':st.s==='done'?'Concluída':'Disponível';return `<div class="qi ${cls}"><b>${q.id}. ${q.title}</b> <i>[${lab}]</i><br>${q.giver}<br>${q.desc}${a?`<br><i>Objetivo: ${q.obj}</i>`:''}</div>`}).join('');return}
+    if(Game.mode==='camp'){$('jb').innerHTML=TQ.map(q=>{const st=Game.tqs(q.id),a=st.s==='act'||st.s==='ready',cls=a?'act':st.s==='done'?'done':'',lab=st.s==='act'?'Em andamento':st.s==='ready'?'Retornar':st.s==='done'?'Concluída':'Disponível';return `<div class="qi ${cls}"><b>${q.id}. ${q.title}</b> <i>[${lab}]</i><br>Área ${q.id} · ${q.giver}<br>${q.desc}${a?`<br><i>Objetivo: ${q.obj}</i>`:''}</div>`}).join('');return}
     $('jb').innerHTML=QUESTS.map(q=>{const st=Game.qs(q.id),cls=st.s==='act'?'act':st.s==='done'?'done':'',lab=st.s==='act'?'Em andamento':st.s==='done'?'Concluída':'Disponível',sp=st.s==='act'?q.steps[st.i]:null;
       return `<div class="qi ${cls}"><b>${q.id}. ${q.title}</b> <i>[${lab}]</i><br>${q.loc} · ${q.giver}<br>${q.desc}${sp?`<br><i>Objetivo: ${sp.obj}</i>`:''}</div>`}).join('');
   }
@@ -2285,7 +2313,7 @@ const CONTROLS=[
   ['Botão Direito','Defesa / Bloqueio, na direção do personagem (segure; no instante do golpe, apara)'],
   ['SHIFT esq. ou dir.','Ataque pesado: mais lento, maior alcance e dano elevado'],
   ['Q','Usar poção de cura (disponível a partir do treino com Quíron)'],
-  ['Espaço','Perto de um NPC: inicia a conversa e avança as falas. Em combate: esquiva / dash (i-frames)'],
+  ['Espaço','Perto de um NPC ou portal: conversa, avança as falas e entra no portal. Em combate: esquiva / dash (i-frames)'],
   ['P','Salvamento manual (aparece "Jogo Salvo!")'],
   ['V','Vestir / tirar a Venda (depois que Quíron a entrega)'],
   ['J','Diário de missões (nas missões secundárias da Região Helíaca)'],
