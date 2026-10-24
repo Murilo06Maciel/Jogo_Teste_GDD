@@ -365,7 +365,7 @@ class Boss{
     bounds(this);
   }
   pick(d){return d<135?(Math.random()<.55?'swing':'thrust'):(d>220||Math.random()<.5?'lunge':'thrust')}
-  begin(type){this.atk={type,d:BATK[type],hit:false};this.state='tele';this.t=0;this.ang=this.face;this.recDur=0}
+  begin(type){this.atk={type,d:BATK[type],hit:false};this.state='tele';this.t=0;this.ang=this.face;this.recDur=0;if(BATK[type].sp)spawnSp(this,type)}
   runAtk(dt,p,a,d){
     const k=this.atk,D=k.d;this.t+=dt;
     if(this.state==='tele'){
@@ -384,7 +384,7 @@ class Boss{
     const D=this.atk.d;
     if(D.petrify&&Game.blind){this.atk.hit=true;return}
     const hit=(this.atk.type==='lunge'||this.atk.type==='charge')?d<this.r+p.r+10:(d<=D.range+p.r&&Math.abs(angDiff(a,this.ang))<=D.arc/2);
-    if(hit){this.atk.hit=true;p.takeDamage(D.dmg*(this.dmgMul||1),this.x,this.y,this);if(D.petrify&&!p.block&&p.iT<=0&&!p.dead)p.stun=Math.max(p.stun,1.3)}
+    if(hit){this.atk.hit=true;p.takeDamage((D.petrify&&!(Game.perks&&Game.perks.amuPet))?999:D.dmg*(this.dmgMul||1),this.x,this.y,this);if(D.petrify&&!p.block&&p.iT<=0&&!p.dead)p.stun=Math.max(p.stun,(Game.perks&&Game.perks.amuPet)?.6:1.3)}
   }
   addPost(n){
     this.post+=n;this.postT=2.4;
@@ -571,7 +571,7 @@ const Game={
   rp(){const p=this.player;p.reset();p.maxHp=100+this.armorBonus;p.hp=p.maxHp},
   initCastle(){
     this.mode='castle';this.duel=false;this.young=true;this.boss=DUMMY;this.armed=true;this.nightTrig=false;this.guardCall=false;this.guardN=null;this.visitedOut=false;this.playerName='';
-    this.armorBonus=0;this.trophies=[];this.venda=false;this.blind=false;this.quests={};this.track=0;this.guards=[];this.heliaAttack=false;this.villageAlert=false;this.warrior=false;this.wooden=false;this.ascent=false;this.qStage=0;this.sanctIntro=false;this.crit=[];this.pots=0;this.potMax=3;this.tq={};this.pend=[];this.tgt=[];this.campNpcs=[];this.tqTr=0;
+    this.armorBonus=0;this.trophies=[];this.venda=false;this.blind=false;this.quests={};this.track=0;this.guards=[];this.heliaAttack=false;this.villageAlert=false;this.warrior=false;this.wooden=false;this.ascent=false;this.qStage=0;this.sanctIntro=false;this.crit=[];this.pots=0;this.potMax=3;this.tq={};this.pend=[];this.tgt=[];this.campNpcs=[];this.tqTr=0;this.afin={rac:0,trad:0,sob:0};this.loreSeen={};this.haz=[];this.bq={me:0,cn:0,ec:0,cm:0};this.honey=0;this.cakes=0;
     this.allNpcs=mkNpcs();
     this.king=new NPC(KING_DEF);this.arturN=new NPC(ARTUR_ESC);this.quironN=new NPC(QUI_DEF);this.lord=this.lord||new OrderLord();
     this.player.reset();this.hitstop=0;this.shake=0;this.endT=0;this.msgT=0;this.result='';
@@ -579,13 +579,13 @@ const Game={
     this.setRoom('garden',480,450);this.state='explore';
   },
   // ----- salvamento -----
-  snapshot(){return{v:2,mode:this.mode,room:this.room,x:this.player.x,y:this.player.y,t:Clock.t,dmg:this.dmgBonus,arm:this.armorBonus,name:this.playerName,tro:this.trophies,venda:this.venda,q:this.quests,pk:this.perks,nt:this.nightTrig,track:this.track,young:this.young,armed:this.armed,asc:this.ascent,tq:this.tq,pots:this.pots,pm:this.potMax,
+  snapshot(){return{v:2,mode:this.mode,room:this.room,x:this.player.x,y:this.player.y,t:Clock.t,dmg:this.dmgBonus,arm:this.armorBonus,name:this.playerName,tro:this.trophies,venda:this.venda,q:this.quests,pk:this.perks,nt:this.nightTrig,track:this.track,young:this.young,armed:this.armed,asc:this.ascent,af:this.afin,bq:this.bq,ck:this.cakes,hn:this.honey,tq:this.tq,pots:this.pots,pm:this.potMax,
     talked:this.allNpcs.filter(n=>n.talked).map(n=>n.name),hs:this.allNpcs.filter(n=>n.petrified||n.dead).map(n=>[n.name,n.dead?2:1])}},
   saveable(){return this.state==='explore'&&['castle','village','forest','helia','mission','sq','camp'].includes(this.mode)&&!(this.mode==='village'&&this.villageAlert)&&!(this.mode==='helia'&&this.heliaAttack)&&!(this.boss&&this.boss!==DUMMY&&!this.boss.dead)},
   manualSave(){if(this.saveable()&&Save.write()){toast('Jogo Salvo!');this.saveFlash=1}else toast('Não é possível salvar agora')},
   restore(d){
     this.initCastle();
-    Object.assign(this,{dmgBonus:d.dmg||0,armorBonus:d.arm||0,playerName:d.name||'',trophies:d.tro||[],venda:!!d.venda,quests:d.q||{},perks:d.pk||{},nightTrig:!!d.nt,track:d.track||0,young:d.young!==false,armed:d.armed!==false,ascent:!!d.asc,warrior:(d.arm||0)>0,tq:d.tq||{},pots:d.pots||0,potMax:d.pm||3,wooden:d.mode==='camp'});
+    Object.assign(this,{dmgBonus:d.dmg||0,armorBonus:d.arm||0,playerName:d.name||'',trophies:d.tro||[],venda:!!d.venda,quests:d.q||{},perks:d.pk||{},nightTrig:!!d.nt,track:d.track||0,young:d.young!==false,armed:d.armed!==false,ascent:!!d.asc,warrior:(d.arm||0)>0,afin:d.af||{rac:0,trad:0,sob:0},bq:Object.assign({me:0,cn:0,ec:0,cm:0},d.bq),cakes:d.ck||0,honey:d.hn||0,tq:d.tq||{},pots:d.pots||0,potMax:d.pm||3,wooden:d.mode==='camp'});
     (d.talked||[]).forEach(nm=>{const n=this.allNpcs.find(x=>x.name===nm);if(n)n.talked=true});
     (d.hs||[]).forEach(([nm,k])=>{const n=this.allNpcs.find(x=>x.name===nm);if(n){n.mute=true;if(k===2)n.dead=true;else{n.petrified=true;n.pal=PAL_STONE}}});
     this.mode=d.mode||'castle';this.visitedOut=true;if(this.mode==='camp')this.mkCamp();
@@ -620,6 +620,7 @@ const Game={
     if(m==='escape'&&id==='gate')this.boss=this.lord;
     if(m==='train'||m==='test')this.boss=this.quiron;
     if(m==='mission'&&R.boss){this.boss=this.mBoss(R.boss);Dlg.say([{n:'Narrador',t:BOSS_INTRO[R.boss]}],false)}
+    this.haz=[];this.trail=[];this.pp=null;
     if(m==='camp')this.campSetup();
     this.noWeapon=!this.armed;
     this.crit=(R.crit||[]).map(([cx,cy])=>({x:cx,y:cy,hx:cx,hy:cy,s:'idle',t:rnd(0,1.5),ang:0,ph:rnd(0,6),hit:false}));
@@ -661,6 +662,8 @@ const Game={
   },
   collect(o){
     if(o.tq){this.tqCollect(o);return}
+    if(o.lore){this.loreRead(o);return}
+    if(o.pi){this.pathItem(o.pi,o);return}
     const q=QUESTS.find(x=>x.id===o.q),st=this.qs(q.id);st.got=(st.got||[]).concat(o.idx);SFX.clang();
     const fin=st.got.length>=q.steps[st.i].list.length,after=()=>{this.state='explore';if(fin)this.stepDone(q)};
     if(o.text){this.state='dialogue';$('prompt').style.display='none';Dlg.say([{n:'Narrador',t:o.text}],true,after)}else{toast(o.label);after()}
@@ -688,7 +691,7 @@ const Game={
   perkList(){const p=this.perks||{},o=[];
     if(p.amulet)o.push('Amuleto da Maré');if(p.stamina)o.push('Faixa do Atleta');if(p.shield)o.push('Escudo do Açoite');
     if(p.disc)o.push('Descontos de equipamento');if(p.potion)o.push('Poções melhores');if(p.shortcut)o.push('Mapa de atalhos');
-    if(p.bestiary)o.push('Bestiário');if(p.dipl)o.push('Diplomacia');
+    if(p.bestiary)o.push('Bestiário');if(p.dipl)o.push('Diplomacia');if(p.fio)o.push('Novelo de Ariadne');if(p.amuPet)o.push('Amuleto Anti-Petrificação');if(this.cakes>0)o.push('Bolos de Mel ×'+this.cakes);
     if(p.iframes)o.push('Reflexos Aguçados');if(p.oak)o.push('Espada Reforçada');if(p.calm)o.push('Mente Serena');if(p.arc)o.push('Mira Afiada');if(p.guard)o.push('Guarda Firme');if(p.fur)o.push('Capa de Pelo');if(p.lore)o.push('Sabedoria Helíaca');
     if(p.rac)o.push('Racionalistas +'+p.rac);if(p.trad)o.push('Tradicionalistas +'+p.trad);return o},
   trackText(){
@@ -696,8 +699,9 @@ const Game={
     return 'Missão: '+q.title+(sp?' — '+sp.obj:'');
   },
   helState(){
-    const n=QUESTS.filter(q=>this.qs(q.id).s==='done').length,k=this.qs(10).s==='done';
-    return n>=7&&k?['ALIADA','A Região Helíaca une racionalistas e tradicionalistas e promete apoio contra a Ordem.']:n>=4?['ESTÁVEL','A Região Helíaca se reergue, ainda dividida, mas em paz.']:['EM CONFLITO','A Região Helíaca segue em disputa, e a Ordem encontrará terreno fértil.'];
+    const n=QUESTS.filter(q=>this.qs(q.id).s==='done').length,k=this.qs(10).s==='done',a=this.afin||{rac:0,trad:0,sob:0},v=[a.rac,a.trad,a.sob].sort((x,y)=>y-x);
+    if(v[0]-v[1]>=3)return['DIVIDIDA','As cidades helíacas se partem em facções rivais, e a Ordem encontrará terreno fértil.'];
+    return n>=7&&k&&v[0]-v[1]<=1?['ALIADA','A Região Helíaca une racionalistas e tradicionalistas e promete apoio contra a Ordem.']:n>=4?['ESTÁVEL','A Região Helíaca se reergue, ainda dividida, mas em paz.']:['DIVIDIDA','A Região Helíaca segue em disputa entre racionalistas e tradicionalistas, e a Ordem encontrará terreno fértil.'];
   },
   // ----- laço de exploração -----
   modeTick(dt){
@@ -710,6 +714,7 @@ const Game={
     if(m==='village'&&this.villageAlert)this.chaseTick(dt);
     if(m==='helia')this.heliaTick(dt);
     if(m==='climb')this.climbTick(dt);
+    if(m==='mission')this.pathTick(dt);
     if(m==='camp'){this.tqTick(dt);if(this.crit.length)this.climbTick(dt)}
   },
   castleUpdate(dt){
@@ -720,8 +725,8 @@ const Game={
     this.npcs.forEach(n=>pushOut(p,n.x,n.y,n.r));
     let near=null,nd=84,door=null,side=null,mo=null,md=46;
     this.npcs.forEach(n=>{if(n.mute)return;const d=Math.hypot(n.x-p.x,n.y-p.y);if(d<nd){nd=d;near=n}});
-    if(this.mode==='sq'||this.mode==='camp'){
-      const objs=this.mode==='sq'?this.questObjs():this.tqObjs(),au=objs.find(o=>o.auto&&Math.hypot(o.x-p.x,o.y-p.y)<30);
+    if(this.mode==='sq'||this.mode==='camp'||this.mode==='mission'){
+      const objs=this.mode==='sq'?this.questObjs():this.mode==='camp'?this.tqObjs():this.loreObjs(),au=objs.find(o=>o.auto&&Math.hypot(o.x-p.x,o.y-p.y)<30);
       if(au){this.collect(au);return}
       objs.forEach(o=>{if(o.auto)return;const d=Math.hypot(o.x-p.x,o.y-p.y);if(d<md){md=d;mo=o}});
     }
@@ -769,6 +774,7 @@ const Game={
     const p=this.player;if(busy)return;
     const block=lines=>{p.y=A.y1+80;this.state='dialogue';$('prompt').style.display='none';Dlg.say(lines,true,()=>{this.state='explore'})};
     if(d.needs==='ascent'&&!this.ascent)return block([{n:'{n}',t:'Ainda há sobreviventes no templo. Preciso ouvir o que viram antes de partir.'}]);
+    if(d.req&&!d.req())return block([{n:'{n}',t:d.deny}]);
     if(d.needs==='camp'&&this.mode!=='camp')return block([qi('Ainda não, aprendiz.')]);
     if(d.needs==='alert'&&!this.villageAlert)return block([{n:'{n}',t:'Ainda não tenho razão para deixar a vila... e não sei para onde iria.'}]);
     if(d.needs==='mission'&&this.mode!=='mission')return block([qi(this.mode==='sq'?'Esses guardiões já caíram.':'Ainda não, aprendiz.')]);
@@ -823,12 +829,13 @@ const Game={
     if(this.duel){this.endDuel(false);return}
     this.rp();
     if(this.mode==='escape'){this.lord.reset();this.armed=false;this.setRoom('gate',480,470)}
-    else if(this.mode==='test'){this.quiron.reset();this.quiron.mode='fight';this.quiron.cd=1.5;this.setRoom('quiron',480,470)}
+    else if(this.mode==='test'){this.quiron=this.quiron||new Quiron();this.quiron.reset();this.quiron.mode='fight';this.quiron.cd=1.5;this.setRoom('quiron',480,470)}
     else this.setRoom(this.room,480,470);
     this.state='explore';this.syncStage();
   },
   afterBoss(){
     if(this.duel){this.endDuel(true);return}
+    if(this.mode==='mission'&&this.pfoe){this.pathFoeDone();return}
     if(this.mode==='mission'){this.missionWin();return}
     if(this.mode==='sq'){this.foeDone();return}
     if(this.mode==='camp'){this.campFoeDone();return}
@@ -918,7 +925,7 @@ const Game={
     toast('Recebido: Espada de Aço e Armadura de Guerreiro (+20 de vida, -20% de dano sofrido)');this.startTest();
   },
   // ----- Treino com Quíron: 10 side quests opcionais -----
-  mkCamp(){this.campNpcs=CAMP_DEFS.map(d=>new NPC({lines:[''],...d}))},
+  mkCamp(){this.quiron=this.quiron||new Quiron();this.campNpcs=CAMP_DEFS.map(d=>new NPC({lines:[''],...d}))},
   startCamp(){
     this.state='wait';
     transition(()=>{
@@ -985,13 +992,18 @@ const Game={
     else if(st.s==='act')Dlg.say(L(q.remind),true,end);
     else Dlg.say(L(q.done),true,()=>{if(q.quiz)this.tqQuiz(q);else this.tqReward(q)});
   },
-  tqQuiz(q){const z=q.quiz;askChoice(z.t,z.o,i=>Dlg.say([qi(i===z.ok?z.good:z.other)],true,()=>this.tqReward(q)))},
+  tqQuiz(q){const z=q.quiz;askChoice(z.t,z.o.map(x=>x.t),i=>{this.addAfin(z.o[i].a);Dlg.say([qi(z.o[i].r)],true,()=>this.tqReward(q))})},
+  addAfin(k){this.afin=this.afin||{rac:0,trad:0,sob:0};this.afin[k]++},
+  domAf(){const a=this.afin||{rac:0,trad:0,sob:0},v=[['rac',a.rac],['trad',a.trad],['sob',a.sob]].sort((x,y)=>y[1]-x[1]);return v[0][1]===v[1][1]?'equi':v[0][0]},
+  afinLine(){return{rac:'Você sempre quis entender antes de agir. A Ordem teme exatamente isso: gente que pergunta.',trad:'Você honrou os antigos mesmo na pressa da guerra. A Ordem teme isso: gente que lembra.',sob:'Você tende a comandar antes de ouvir. Cuidado: a Ordem adora quem confunde firmeza com tirania.',equi:'Você não se prendeu a um só lado, e por isso os dois lados o ouvem.'}[this.domAf()]},
   tqAsk(i){
     const Q=Q10Q[i];
-    askChoice(Q.t,Q.o,c=>{
-      if(c!==Q.ok)Dlg.say([qi('Não. Essa resposta não protege ninguém, nem você. Pense de novo.')],true,()=>this.tqAsk(i));
-      else if(i<Q10Q.length-1)Dlg.say([qi('Continue.')],true,()=>this.tqAsk(i+1));
-      else Dlg.say([qi('É isso. Um propósito que não depende de ninguém, nem da sua dor. Você ganhou o aço e a armadura. Agora, o teste.')],true,()=>this.tqReward(tqq(10)));
+    askChoice(Q.t,Q.o.map(x=>x.t),c=>{
+      const o=Q.o[c];this.addAfin(o.a);
+      Dlg.say([qi(o.r)],true,()=>{
+        if(i<Q10Q.length-1)this.tqAsk(i+1);
+        else Dlg.say([qi({rac:'Você pensa antes de sentir. Que isso nunca o torne frio.',trad:'Você carrega o peso dos antigos. Que isso nunca o torne cego.',sob:'Você tem a firmeza de um rei. Que isso nunca o torne tirano.',equi:'Você não se curva a um só lado. Poucos conseguem.'}[this.domAf()]),qi('Não há resposta errada aqui. Só respostas que dizem quem você é. Eu as lembrarei. Agora, o teste.')],true,()=>this.tqReward(tqq(10)));
+      });
     });
   },
   tqTick(dt){
@@ -1036,6 +1048,77 @@ const Game={
       qi('Chega de madeira. Esta é a Espada de Aço: golpe leve no botão esquerdo, golpe pesado no SHIFT. E esta, a Armadura de Guerreiro. Pesa mais que a culpa, e protege melhor.'),
       qi('Agora, o teste. Não é uma luta até a morte: quero ver sua postura e sua esquiva. E eu não vou me conter.')],true,()=>this.giveGear());
   },
+  loreObjs(){
+    const R=ROOMS[this.room];this.loreSeen=this.loreSeen||{};if(!R)return[];
+    return((R.lore||[]).map((o,i)=>({...o,i,lore:1,kind:'stone',label:'Examinar inscrição'})).filter(o=>!this.loreSeen[this.room+o.i]))
+      .concat((R.items||[]).filter(o=>!this.loreSeen[this.room+'i'+o.id]).map(o=>({...o,pi:o.id,kind:/^(mel|erva)/.test(o.id)?'erva':'stone'})));
+  },
+  loreRead(o){this.loreSeen[this.room+o.i]=1;this.state='dialogue';$('prompt').style.display='none';SFX.clang();Dlg.say([{n:'Inscrição',t:o.text}],true,()=>{this.state='explore';toast('Registro de lore adicionado ao Diário')})},
+  hazTick(dt){
+    const hz=this.haz;if(!hz||!hz.length||this.state==='dialogue')return;const p=this.player;
+    for(let i=hz.length-1;i>=0;i--){
+      const h=hz[i];h.t+=dt;
+      if(!h.done&&h.t>=h.tele){
+        h.done=true;burst(h.x,h.y-6,h.k==='fire'?'#ff8a30':h.k==='pool'?'#6ac84a':'#b8aa90',14,220,.5,3);if(h.k!=='pool')this.shake=Math.max(this.shake,6);
+        if(h.dmg&&!p.dead&&Math.hypot(p.x-h.x,p.y-h.y)<h.r+p.r&&p.iT<=0){p.takeDamage(h.dmg*1.3,h.x,h.y,DUMMY);if(h.k==='howl'||h.k==='ring')p.stun=Math.max(p.stun,.5)}
+      }
+      if(h.k==='pool'&&h.done){h.tk=(h.tk||0)-dt;if(h.tk<=0){h.tk=.5;if(Math.hypot(p.x-h.x,p.y-h.y)<h.r&&!p.dead&&p.iT<=0)p.takeDamage(5,h.x,h.y,DUMMY)}}
+      if(h.t>(h.k==='pool'?h.tele+3.5:h.tele+.35))hz.splice(i,1);
+    }
+  },
+  once(k,n,t){this.loreSeen=this.loreSeen||{};if(this.loreSeen[k])return;this.loreSeen[k]=1;Dlg.say([{n,t}],false)},
+  pathFight(arr){this.foeQ=arr.slice();this.pfoe=true;this.spawnFoe()},
+  pathFoeDone(){
+    this.foeQ.shift();this.state='explore';
+    if(this.foeQ.length){this.spawnFoe();return}
+    this.pfoe=false;this.boss=DUMMY;this.bq.cn=2;toast('Saqueadores derrotados: fale com o Espírito da Sacerdotisa');
+  },
+  pathItem(id,o){
+    if(id!=='altar')this.loreSeen[this.room+'i'+id]=1;this.state='dialogue';$('prompt').style.display='none';SFX.clang();
+    const say=(n,t,f)=>Dlg.say([{n,t}],true,()=>{this.state='explore';if(f)f()});
+    if(id==='ossos')say('{n}','Nenhum destes homens morreu em combate justo... foram encurralados na escuridão.');
+    else if(id==='amuleto')say('Narrador','No baú, um amuleto de pedra e prata, gravado com um olho riscado.',()=>{if(this.bq.me<2)this.bq.me=2;toast('Amuleto obtido: leve-o ao Pescador de Estátuas')});
+    else if(id==='altar'){
+      if((this.honey||0)>=3){this.loreSeen[this.room+'ialtar']=1;say('Narrador','Sobre o altar de pedra, você mistura o mel dos mortos às ervas soporíferas. Nasce um bolo escuro, de cheiro doce e pesado.',()=>{this.cakes=3;this.bq.cm=1;toast('3 Bolos de Mel Soporíferos prontos (F: arremessar na luta contra Cérbero)')})}
+      else say('Narrador','Um altar de pedra gasta. Faltam ingredientes: mel dos mortos e asfódelos soporíferos ('+(this.honey||0)+'/3).');
+    }else{this.state='explore';this.honey=(this.honey||0)+1;toast('Ingrediente colhido ('+this.honey+'/3)')}
+  },
+  pathEco(dt){
+    const p=this.player;
+    if(!this.pend||!this.pend.length)this.pend=[[340,2.2,0,150],[395,2.7,2,170],[450,3,4,140]].map(([y,w,ph,amp])=>({y,w,ph,amp,x:480,cd:0,sc:0}));
+    this.blind=true;
+    this.pend.forEach(q=>{
+      q.x=480+Math.sin(this.t*q.w+q.ph)*q.amp;q.cd-=dt;q.sc-=dt;const d=Math.hypot(p.x-q.x,p.y-q.y);
+      if(d<170&&q.sc<=0){SFX.tone('sine',260,180,.1,.12);q.sc=Math.max(.25,d/420)}
+      if(!p.dead&&d<44&&q.cd<=0){
+        if(p.dashT>0||p.iT>0){q.cd=.9;this.eco=(this.eco||0)+1;toast('Esquiva '+this.eco+'/4');if(this.eco>=4){this.bq.ec=2;this.pend=[];this.blind=false;toast('Prova do Eco concluída: fale com Quíron')}}
+        else if(d<22&&p.hurt<=0){q.cd=.9;p.takeDamage(5,q.x,q.y,DUMMY)}
+      }
+    });
+  },
+  pathTick(dt){
+    const R=ROOMS[this.room];if(!R)return;
+    if(this.pfoe&&this.boss===DUMMY&&this.foeQ&&this.foeQ.length)this.spawnFoe();
+    if(this.bq.ec===1&&this.room==='me2')this.pathEco(dt);
+    if(R.holes||this.crit.length)this.climbTick(dt);
+    const p=this.player;
+    if(R.trail&&this.perks&&this.perks.fio){const l=this.trail[this.trail.length-1];if(!l||Math.hypot(p.x-l[0],p.y-l[1])>26){this.trail.push([p.x,p.y]);if(this.trail.length>300)this.trail.shift()}}
+    if(R.slow){const pp=this.pp;if(pp&&p.dashT<=0&&R.slow.some(([x,y,r])=>Math.hypot(p.x-x,p.y-y)<r)){p.x=pp.x+(p.x-pp.x)*.4;p.y=pp.y+(p.y-pp.y)*.4}this.pp={x:p.x,y:p.y}}
+    if(R.amb){
+      this.ambT=(this.ambT||0)-dt;
+      if(this.ambT<=0){
+        this.ambT=rnd(2.8,4.2);const k=clamp(1-Math.hypot(p.x-480,p.y-130)/560,.12,1);
+        if(R.amb==='cn')SFX.tone('sine',95-30*k,45,.9,.16*k+.04);
+        else if(R.amb==='me'){SFX.tone('sine',320,210,1.1,.05);if(k>.5)SFX.tone('square',900,700,.5,.03*k)}
+        else SFX.tone('square',150,90,.5,.06+.05*k);
+      }
+    }
+  },
+  throwCake(){
+    const b=this.boss;
+    if(!(this.cakes>0)||!(b instanceof Cerbero)||b.dead||this.state==='dialogue')return;
+    this.cakes--;b.sleepT=7;this.flashMsg('UMA CABEÇA ADORMECE');burst(b.x,b.y-30,'#e8dcc0',16,160,.8,3);toast('Bolos de Mel restantes: '+this.cakes);
+  },
   usePotion(){
     const p=this.player;
     if(this.pots>0&&p.hp<p.maxHp&&!p.dead&&['explore','fight'].includes(this.state)){this.pots--;p.hp=Math.min(p.maxHp,p.hp+45);toast('Poção usada: +45 de vida');burst(p.x,p.y-24,'#6adf7a',14,160,.6,3)}
@@ -1051,7 +1134,7 @@ const Game={
   },
   startTest(){
     transition(()=>{
-      this.mode='test';this.armed=true;this.noWeapon=false;this.rp();this.quiron.reset();parts.length=0;$('obj').classList.remove('on');
+      this.mode='test';this.armed=true;this.noWeapon=false;this.rp();this.quiron=this.quiron||new Quiron();this.quiron.reset();parts.length=0;$('obj').classList.remove('on');
       this.setRoom('quiron',480,470);this.quiron.mode='fight';this.quiron.cd=1.5;this.syncStage();this.state='explore';
       Dlg.say([qi('Mostre-me por que você ainda respira.')],false);
     });
@@ -1063,7 +1146,7 @@ const Game={
   startMission(){
     this.state='wait';
     transition(()=>{
-      this.mode='mission';this.venda=true;this.blind=false;this.rp();this.setRoom('quiron',480,440);this.syncStage();this.state='dialogue';
+      this.mode='mission';this.venda=false;this.blind=false;this.rp();this.setRoom('quiron',480,440);this.syncStage();this.state='dialogue';
       Dlg.say([qi('Três feras guardam o que preciso saber: a Medusa, no Templo Esquecido; Cérbero, nas Ruínas Subterrâneas; e o Minotauro, no Labirinto.'),
         qi('Traga a cabeça, a corrente e os chifres. Tome esta Venda, feita para a Medusa: com ela sobre os olhos (tecla V), o olhar dela não o petrifica.'),
         qi('As portas às minhas costas levam a cada guardião. Volte com as três provas, ou não volte.')],true,()=>{this.state='explore'});
@@ -1094,6 +1177,7 @@ const Game={
       qi('A cabeça traz um selo sob a venda. A corrente, uma insígnia forjada. Os chifres, um cravo de ferro. Magia Profanada, gravada em todas as marcas.'),
       qi('A Ordem da Nova Coroa soltou essas feras de propósito. O inimigo não é o monstro, mas quem o guia.'),
       qi('Não basta um herói. Vou treinar os cidadãos comuns, para que aprendam a se defender sozinhos.'),
+      qi(this.afinLine()),
       qi('Quanto à Região Helíaca, pelo que você fez, seu estado agora é: '+hs[0]+'. '+hs[1])],true,
       ()=>cardSeq(['Região Helíaca: '+hs[0],'A Ordem não precisa invadir reinos. Ela faz os povos se destruírem sozinhos.','FIM DO PROTÓTIPO'],()=>menuMid()));
   },
@@ -1109,13 +1193,14 @@ const Game={
   win(){this.state='win';this.result='win';this.endT=1.4},
   lose(){this.state='lose';this.result='lose';this.endT=1.2},
   update(dt){
-    this.t+=dt;
+    this.t+=dt;this.hazTick(dt);
     if(Input.hit('r')&&this.mode==='tutorial'){this.initTutorial();return}
     Dlg.update(dt);
     this.nearNpc=false;
     if(this.mode==='scene'){Scene.update(dt);return}
     if(Input.hit('p'))this.manualSave();
     if(Input.hit('q'))this.usePotion();
+    if(Input.hit('f'))this.throwCake();
     if(Input.hit('j')&&(this.mode==='sq'||this.mode==='camp')&&(this.state==='explore'||Journal.on))Journal.toggle();
     if(Journal.on)return;
     if(Input.hit('v')&&this.venda&&this.combat)this.blind=!this.blind;
@@ -1171,7 +1256,7 @@ const Game={
     ctx.drawImage(tut?BGG:ROOM_BG[this.room],0,0);
     if(!R.outdoor)drawWindows(R);
     b.drawTele();
-    const list=tut?[]:BR.map(r=>({y:r.y,f:()=>drawBrazier(r)})).concat(this.props.map(q=>({y:q[2],f:()=>drawProp(q[0],q[1],q[2],q[4])})),this.npcs.map(n=>({y:n.y,f:()=>n.draw()})),((this.mode==='climb'||this.mode==='camp')?this.crit:[]).map(c=>({y:c.y,f:()=>drawCrit(c)})),(this.mode==='camp'?(this.pend||[]).map(q=>({y:q.y+1,f:()=>drawPend(q)})).concat((this.tgt||[]).map(q=>({y:q.y,f:()=>drawTgt(q)}))):[]),(this.mode==='escape'&&this.room==='gate'&&!this.armed?[{y:400,f:drawSwordItem}]:[]),(((this.mode==='sq'?this.questObjs():this.mode==='camp'?this.tqObjs():[])).map(o=>({y:o.y,f:()=>drawQObj(o)}))));
+    const list=tut?[]:BR.map(r=>({y:r.y,f:()=>drawBrazier(r)})).concat(this.props.map(q=>({y:q[2],f:()=>drawProp(q[0],q[1],q[2],q[4])})),this.npcs.map(n=>({y:n.y,f:()=>n.draw()})),(this.perks&&this.perks.fio&&ROOMS[this.room].trail&&this.trail&&this.trail.length>1?[{y:A.y1-4,f:()=>drawThread(this.trail)}]:[]),(ROOMS[this.room].slow?[{y:A.y1-3,f:()=>drawSlow(ROOMS[this.room].slow)}]:[]),((this.boss instanceof Cerbero&&this.boss.sleepT>0)?[{y:this.boss.y+40,f:()=>{ctx.fillStyle='#cfe8ff';ctx.font='700 18px Cinzel,serif';ctx.textAlign='center';ctx.fillText('Z z',this.boss.x,this.boss.y-70)}}]:[]),(this.haz||[]).map(h=>({y:A.y1-5,f:()=>drawHaz(h)})),(this.crit||[]).map(c=>({y:c.y,f:()=>drawCrit(c)})),((this.mode==='camp'||this.mode==='mission')?(this.pend||[]).map(q=>({y:q.y+1,f:()=>drawPend(q)})).concat((this.tgt||[]).map(q=>({y:q.y,f:()=>drawTgt(q)}))):[]),(this.mode==='escape'&&this.room==='gate'&&!this.armed?[{y:400,f:drawSwordItem}]:[]),(((this.mode==='sq'?this.questObjs():this.mode==='camp'?this.tqObjs():this.mode==='mission'?this.loreObjs():[])).map(o=>({y:o.y,f:()=>drawQObj(o)}))));
     list.push({y:p.y,f:()=>drawPlayer(p)},{y:b.y,f:()=>drawBoss(b)});
     list.sort((u,v)=>u.y-v.y).forEach(o=>o.f());
     drawSlashes(p,b);
@@ -1180,7 +1265,8 @@ const Game={
     R.outdoor?gardenLight(p,this.lightList()):lighting(p,this.fireLights());
     if(this.mode==='escape'){ctx.fillStyle='rgba(120,30,10,.26)';ctx.fillRect(0,0,W,H)}
     if(R.shade){ctx.fillStyle=`rgba(4,14,8,${R.shade})`;ctx.fillRect(0,0,W,H)}
-    if(this.blind){const bg=ctx.createRadialGradient(p.x,p.y-20,70,p.x,p.y-20,230);bg.addColorStop(0,'rgba(0,0,0,0)');bg.addColorStop(1,'rgba(0,0,0,.94)');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H)}
+    if(this.blind||ROOMS[this.room].fog){const bg=ctx.createRadialGradient(p.x,p.y-20,70,p.x,p.y-20,230);bg.addColorStop(0,'rgba(0,0,0,0)');bg.addColorStop(1,'rgba(0,0,0,.94)');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H)}
+    if(this.blind&&b instanceof Medusa&&!b.dead){ctx.save();ctx.strokeStyle='rgba(255,170,60,'+(.55+.25*Math.sin(this.t*6))+')';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(b.x,b.y-26,22,34,0,0,7);ctx.stroke();ctx.fillStyle='rgba(255,140,40,.18)';ctx.fill();if(b.state==='tele'&&b.atk&&b.atk.type==='gaze'){ctx.strokeStyle='rgba(255,230,120,.6)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(b.x,b.y-40);ctx.lineTo(b.x+Math.cos(b.face)*380,b.y-40+Math.sin(b.face)*380);ctx.stroke()}ctx.restore()}
     if(this.room==='gate'&&this.mode==='castle'){ctx.globalCompositeOperation='lighter';const gg=ctx.createRadialGradient(700,A.y1-30,5,700,A.y1-30,200);gg.addColorStop(0,'rgba(200,255,150,.35)');gg.addColorStop(1,'rgba(200,255,150,0)');ctx.fillStyle=gg;ctx.fillRect(0,0,W,H);ctx.globalCompositeOperation='source-over'}
     ctx.restore();
     if(b.bars)drawBossBars(b);
@@ -1464,7 +1550,7 @@ const ROOMS={
  cav_ferro:{name:'Caverna de Ferro-Espelho',area:'helia',tone:40,fc:['#262a30','#4a525c'],carpet:'none',banners:[],windows:[],torches:[[200,260],[760,260],[200,490],[760,490]],pillars:[[400,440],[560,440]],doors:[{x:480,to:'porto',sx:800,label:'Saída',needs:'sq'}]},
  ginasio:{name:'Ginásio Tradicionalista',area:'helia',tone:80,fc:['#5a4a34','#9a8460'],carpet:'none',banners:[190,770],windows:[],torches:[[200,260],[760,260],[200,490],[760,490]],pillars:[[260,440],[700,440]],doors:[{x:480,to:'monte',sx:480,label:'Saída',needs:'sq'}]},
  quiron:{name:'Santuário de Quíron',area:'quiron',outdoor:true,og:'monte',sky:['#7fb0e0','#f4e6c0'],enter(){Game.enterSanct()},props:[['dummy',190,310,14],['dummy',300,260,14],['dummy',720,300,14],['rack',790,250,22],['rack',140,420,22],['campfire',830,440,14],['rubble',620,470,10],['tree',90,490,16]],
-  doors:[{x:480,to:'tq1',sx:240,label:'Portal do Treino: Área 1',needs:'camp',portal:true,pc:'255,210,120',c1:'#ffe9a8',c2:'#c28a3a'},{x:200,to:'templo',sx:480,sy:470,label:'Templo Esquecido',needs:'mission'},{x:380,to:'ruinas',sx:480,sy:470,label:'Ruínas Subterrâneas',needs:'mission'},{x:560,to:'labirinto',sx:480,sy:470,label:'Labirinto',needs:'mission'},{x:780,to:'helia',sx:330,label:'Região Helíaca',needs:'sq',mode:'sq'}]},
+  doors:[{x:480,to:'tq1',sx:240,label:'Portal do Treino: Área 1',needs:'camp',portal:true,pc:'255,210,120',c1:'#ffe9a8',c2:'#c28a3a'},{x:200,to:'me1',sx:480,sy:470,label:'Trilha da Medusa',needs:'mission'},{x:380,to:'ce1',sx:480,sy:470,label:'Margens do Aqueronte',needs:'mission'},{x:560,to:'cn0',sx:480,sy:470,label:'Cais de Embarque (Creta)',needs:'mission'},{x:780,to:'helia',sx:330,label:'Região Helíaca',needs:'sq',mode:'sq'}]},
  trilha1:{name:'Trilha Rochosa',area:'quiron',mode:'climb',outdoor:true,og:'monte',sky:['#7fb0e0','#f4e6c0'],sp:[480,470],crit:[[760,350],[200,255],[660,255]],
   holes:[[60,395,590,45],[330,285,560,45],[60,185,370,45],[540,185,360,45]],props:[['rubble',150,470,10],['rubble',850,300,10],['rubble',600,350,10]],
   enter(){Clock.t=.1;Clock.step(0,false);Dlg.say([{n:'{n}',t:'Sem arma, só pernas e fôlego. Os abismos cortam a trilha: preciso contorná-los. E as criaturas... Espaço me faz rolar para longe.'}],false)},
@@ -1472,9 +1558,9 @@ const ROOMS={
  trilha2:{name:'Despenhadeiro',area:'quiron',mode:'climb',outdoor:true,og:'monte',sky:['#7fb0e0','#f4e6c0'],sp:[480,470],crit:[[250,365],[720,365],[300,250],[680,250]],
   holes:[[60,400,330,45],[500,400,390,45],[200,290,520,45],[60,185,260,45],[640,185,260,45]],props:[['rubble',130,330,10],['rubble',860,330,10]],
   doors:[{x:480,to:'quiron',sx:480,sy:470,label:'Santuário de Quíron',mode:'sanct'}]},
- templo:{name:'Templo Esquecido',area:'quiron',boss:'medusa',tone:96,fc:['#6a665c','#b8b0a0'],carpet:'none',banners:[],windows:[],torches:[[200,260],[760,260],[200,490],[760,490]],pillars:[[300,230],[660,230],[300,440],[660,440]],doors:[{x:480,to:'quiron',sx:480,sy:440,label:'Arena de Quíron'}]},
- ruinas:{name:'Ruínas Subterrâneas',area:'quiron',boss:'cerbero',tone:34,fc:['#1c1a18','#34302a'],carpet:'none',banners:[],windows:[],torches:[[200,260],[760,260],[200,490],[760,490]],pillars:[[260,330],[700,330]],props:[['rubble',330,430,10],['rubble',640,430,10],['rubble',480,470,10]],doors:[{x:480,to:'quiron',sx:480,sy:440,label:'Arena de Quíron'}]},
- labirinto:{name:'Labirinto do Minotauro',area:'quiron',boss:'minotauro',tone:50,fc:['#262420','#3e3a34'],carpet:'none',banners:[],windows:[],torches:[[150,250],[810,250],[150,490],[810,490]],pillars:[],props:[['blk',220,300,24],['blk',270,300,24],['blk',700,300,24],['blk',750,300,24],['blk',240,450,24],['blk',720,450,24],['blk',480,420,24]],doors:[{x:480,to:'quiron',sx:480,sy:440,label:'Arena de Quíron'}]}
+ templo:{lore:[{x:200,y:330,text:'Medusa foi sacerdotisa de Atena: mortal, devota, famosa por seus cabelos. Fez voto de pureza.'},{x:480,y:430,text:'Poseidon a violou dentro do templo. Atena, em vez de punir o culpado, puniu a vítima: cabelos de serpente e um olhar que petrifica.'},{x:760,y:330,text:'Exilada no extremo oeste, perto das portas do Submundo, Medusa viveu em isolamento absoluto, cercada pelas estátuas de quem a encarou.'}],name:'Templo Esquecido',area:'quiron',boss:'medusa',tone:96,fc:['#6a665c','#b8b0a0'],carpet:'none',banners:[],windows:[],torches:[[200,260],[760,260],[200,490],[760,490]],pillars:[[300,230],[660,230],[300,440],[660,440]],doors:[{x:480,to:'quiron',sx:480,sy:440,label:'Arena de Quíron'}]},
+ ruinas:{enter(){if(Game.bq&&Game.bq.cm)Game.cakes=3},lore:[{x:200,y:330,text:'Cérbero, filho dos monstros primordiais Tífão e Equidna. Irmão da Hidra de Lerna e do Leão de Nemeia.'},{x:480,y:430,text:'Hades o adotou para guardar os Portões de Bronze: impedir que os vivos entrem sem permissão e que os mortos escapem.'},{x:760,y:330,text:'Onde a saliva de Cérbero toca o chão, brota o acônito, a erva mortal. Reza a lenda que ele a espalha onde passa.'}],name:'Ruínas Subterrâneas',area:'quiron',boss:'cerbero',tone:34,fc:['#1c1a18','#34302a'],carpet:'none',banners:[],windows:[],torches:[[200,260],[760,260],[200,490],[760,490]],pillars:[[260,330],[700,330]],props:[['rubble',330,430,10],['rubble',640,430,10],['rubble',480,470,10]],doors:[{x:480,to:'quiron',sx:480,sy:440,label:'Arena de Quíron'}]},
+ labirinto:{lore:[{x:200,y:330,text:'Afresco desbotado: um touro branco emergindo do mar. Minos jurou sacrificá-lo a Poseidon e, por ganância, o poupou, oferecendo um touro comum em seu lugar.'},{x:480,y:430,text:'Restos de uma vaca de madeira oca, obra de Dédalo. Em vingança, Poseidon fez Pasífae desejar o touro. Do ventre dela nasceu Asterion, meio homem, meio touro.'},{x:760,y:330,text:'Ossos e correntes. Asterion só aceitava carne humana. Dédalo ergueu o labirinto sob o palácio de Cnosso para esconder a vergonha do rei.'}],name:'Labirinto do Minotauro',area:'quiron',boss:'minotauro',tone:50,fc:['#262420','#3e3a34'],carpet:'none',banners:[],windows:[],torches:[[150,250],[810,250],[150,490],[810,490]],pillars:[],props:[['blk',220,300,24],['blk',270,300,24],['blk',700,300,24],['blk',750,300,24],['blk',240,450,24],['blk',720,450,24],['blk',480,420,24]],doors:[{x:480,to:'quiron',sx:480,sy:440,label:'Arena de Quíron'}]}
 };
 const TA=[
  ['Reflexo Cego','monte',[['rubble',140,470,10],['rubble',860,460,10]]],
@@ -1493,6 +1579,55 @@ TA.forEach(([t,og,props,crit],i)=>{ // sequência: Santuário <-> Área 1 <-> ..
   ROOMS['tq'+n]={name:'Área '+n+': '+t,area:'quiron',mode:'camp',outdoor:true,og,sky:['#7fb0e0','#f4e6c0'],props,crit:crit||[],
     doors:[{x:240,to:n===1?'quiron':'tq'+(n-1),sx:n===1?480:720,sy:n===1?400:undefined,label:'Voltar: '+(n===1?'Santuário':'Área '+(n-1)),portal:true,pc:'120,170,255',c1:'#a8c8ff',c2:'#3a5a9a'},
            {x:720,to:last?'quiron':'tq'+(n+1),sx:last?480:240,sy:last?400:undefined,label:'Avançar: '+(last?'Santuário':'Área '+(n+1)),portal:true,pc:'255,210,120',c1:'#ffe9a8',c2:'#c28a3a'}]};
+});
+const SKY2=['#7fb0e0','#f4e6c0'],SKYM=['#4a2a4a','#d08a5a'],SKYC=['#10101c','#3a2a3a'];
+const K=(to,sy)=>({x:140,to,sx:480,sy,label:'Voltar'}),F=(to,label,o)=>Object.assign({x:480,to,sx:480,sy:470,label},o||{});
+const L3=(a,b,c)=>[{x:200,y:255,text:a},{x:480,y:355,text:b},{x:760,y:255,text:c}];
+Object.assign(ROOMS,{
+ // ---- MINOTAURO: Cais -> Costa de Creta -> Vila em Ruínas (side quest: Novelo) -> Labirinto -> Arena ----
+ cn0:{name:'Cnosso 0: Cais de Embarque',area:'quiron',outdoor:true,og:'periferia',sky:SKY2,props:[['rubble',150,450,10],['rubble',840,440,10]],
+  lore:[{x:480,y:360,text:'Placa do cais: Creta, a ilha de Minos. Dizem que o rei enganou o próprio Poseidon.'}],
+  doors:[Object.assign(K('quiron',400),{label:'Voltar ao Santuário'}),F('cn1','Embarcar: Mar Egeu')]},
+ cn1:{name:'Cnosso 1: Costa de Creta',area:'quiron',outdoor:true,og:'monte',sky:SKY2,
+  enter(){Game.once('e_cn1','Narrador','Após dias de navegação pelo Mar Egeu, a costa branca de Creta surge entre a névoa.')},
+  props:[['col',200,330,14],['col',770,330,14],['rubble',480,300,10],['rubble',330,430,10],['rubble',650,440,10]],
+  lore:[{x:200,y:420,text:'Ruína do templo de Poseidon: um touro de pedra, despedaçado. O rei Minos jurou sacrificar o Touro Branco ao deus, mas o poupou por ganância e ofereceu um touro comum.'},{x:770,y:420,text:'Inscrição: a vingança de Poseidon recaiu sobre a rainha Pasífae, que passou a desejar o touro.'}],
+  doors:[K('cn0'),F('cn2','Vila de Cnosso')]},
+ cn2:{name:'Cnosso 2: Vila em Ruínas',area:'quiron',outdoor:true,og:'periferia',sky:SKY2,props:[['burnt',190,420,40],['burnt',790,420,40],['rubble',480,400,10],['rubble',560,300,10]],
+  lore:[{x:700,y:300,text:'Diário rasgado: Dédalo ergueu uma vaca de madeira oca. Dela nasceu Asterion, que só aceitava carne humana. O rei mandou construir o labirinto para escondê-lo.'}],
+  doors:[K('cn1'),F('cn3','Entrada do Labirinto',{req:()=>Game.perks&&Game.perks.fio,deny:'Sem um guia, eu me perderia para sempre nesta escuridão. Preciso do Novelo de Fio Luminoso.'})]},
+ cn3:{name:'Cnosso 3: Labirinto de Dédalo',area:'quiron',outdoor:true,og:'arredores',sky:SKY2,fog:true,trail:true,amb:'cn',sp:[480,470],crit:[[760,350],[200,255]],
+  holes:[[60,395,590,45],[330,285,560,45],[540,185,360,45]],props:[['rubble',150,470,10],['rubble',860,300,10],['rubble',600,350,10]],
+  items:[{id:'ossos',x:300,y:455,label:'Examinar os ossos'}],
+  lore:L3('Parede: machados de lâmina dupla, os labrys, gravados em todo o corredor.','Fresco desbotado: touros sagrados e jovens saltando sobre eles.','Marcas de garras e chifres, fundas na pedra. Algo grande passou por aqui, muitas vezes.'),
+  doors:[K('cn2'),F('labirinto','Centro do Labirinto')]},
+ // ---- MEDUSA: Terras Áridas -> Acampamento (side quest: Prova do Eco) -> Trilha dos Petrificados -> Caverna ----
+ me1:{name:'Medusa 1: Terras Áridas da Cirenaica',area:'quiron',outdoor:true,og:'monte',sky:SKYM,amb:'me',
+  enter(){Game.once('e_me1','Narrador','Um vale seco, de vegetação morta, sob um crepúsculo que não termina. O vento assobia nas fendas como serpentes distantes.')},
+  props:[['rubble',130,330,10],['rubble',860,360,10],['rubble',480,300,10],['rubble',330,440,10]],
+  lore:L3('Mural: Medusa era sacerdotisa de Atena, mortal, devota e casta, famosa pelos cabelos.','Mural: Poseidon a violou dentro do templo. Atena, em vez de punir o culpado, puniu a vítima.','Mural: banida para o extremo do mundo, Medusa viveu isolada, cercada por quem ousou encará-la.'),
+  doors:[Object.assign(K('quiron',400),{label:'Voltar ao Santuário'}),F('me2','Acampamento de Quíron')]},
+ me2:{name:'Medusa 2: Acampamento de Quíron',area:'quiron',outdoor:true,og:'monte',sky:SKYM,amb:'me',props:[['campfire',800,430,14],['rubble',620,470,10],['rubble',340,300,10]],
+  doors:[K('me1'),F('me3','Trilha dos Petrificados',{req:()=>Game.venda,deny:'Sem a Faixa de Quíron, o olhar da Górgona me petrificaria antes de eu vê-la.'})]},
+ me3:{name:'Medusa 3: Trilha dos Petrificados',area:'quiron',outdoor:true,og:'monte',sky:SKYM,fog:true,amb:'me',crit:[[300,300],[650,330],[480,420],[780,260]],
+  props:[['rubble',130,330,10],['rubble',860,360,10],['rubble',480,300,10]],
+  items:[{id:'amuleto',x:850,y:235,label:'Abrir o baú nos penhascos'}],
+  lore:L3('Estátua de um soldado da Ordem, de mão estendida, o rosto em puro pavor.','Estátuas de animais e guerreiros, todas viradas para o mesmo ponto: a caverna.','O sibilar fica mais alto a cada passo. Algo se move entre as pedras.'),
+  doors:[K('me2'),F('templo','Caverna da Medusa')]},
+ // ---- CÉRBERO: Fenda -> Margens (side quest: Oferenda) -> Rio dos Mortos -> Portões de Bronze ----
+ ce1:{name:'Cérbero 1: Fenda de Acesso ao Hades',area:'quiron',outdoor:true,og:'periferia',sky:SKYC,amb:'ce',
+  enter(){Game.once('e_ce1','Narrador','Uma fissura vulcânica desce para o escuro. O ar gela, a névoa cobre os pés e há cheiro de enxofre. Flores roxas brotam nas rachaduras.')},
+  props:[['flor',200,300,4],['flor',780,300,4],['flor',330,250,4],['flor',640,250,4],['flor',100,400,4],['flor',880,420,4],['rubble',560,440,10]],
+  lore:L3('Inscrição: Cérbero, filho de Tífão e Equidna, irmão da Hidra de Lerna e do Leão de Nemeia.','Inscrição: Hades o fez guardião dos Portões de Bronze, para que nenhum vivo entre e nenhum morto escape.','Inscrição: onde a saliva de Cérbero toca o chão, brota o acônito, a erva mortal.'),
+  doors:[Object.assign(K('quiron',400),{label:'Voltar ao Santuário'}),F('ce2','Margens dos Mortos')]},
+ ce2:{name:'Cérbero 2: Margens dos Mortos',area:'quiron',outdoor:true,og:'periferia',sky:SKYC,amb:'ce',
+  props:[['flor',200,300,4],['flor',780,300,4],['rubble',560,440,10],['rubble',400,430,10]],
+  items:[{id:'mel1',x:150,y:430,label:'Colher mel dos mortos',auto:true},{id:'mel2',x:820,y:420,label:'Colher mel dos mortos',auto:true},{id:'erva',x:330,y:470,label:'Colher asfódelo soporífero',auto:true},{id:'altar',x:640,y:300,label:'Misturar no altar de pedra'}],
+  doors:[K('ce1'),F('ce3','Rio Aqueronte',{req:()=>Game.bq.cm,deny:'Sem uma oferenda que acalme a fera, os Portões de Bronze serão a minha sepultura.'})]},
+ ce3:{name:'Cérbero 3: Margens do Aqueronte',area:'quiron',outdoor:true,og:'periferia',sky:SKYC,amb:'ce',slow:[[250,300,70],[700,330,70],[480,400,80],[300,440,60],[680,440,60]],
+  props:[['flor',120,330,4],['flor',860,360,4],['flor',480,260,4],['rubble',560,300,10]],
+  lore:L3('Almas vagantes se agarram às margens, puxando quem passa.','Campos de asfódelos gélidos, onde nada vivo cresce.','Ao longe, correntes imensas arrastam pela rocha. Os Portões de Bronze estão perto.'),
+  doors:[K('ce2'),F('ruinas','Portões de Bronze')]}
 });
 const NPC_DEFS=[
  // ---- Castelo ----
@@ -1618,6 +1753,18 @@ const NPC_DEFS=[
     this.fin=true;
     return['A guarda de Eleutéria foi destruída. Eu sou tudo o que resta dela, e nem de pé consigo ficar.','Se aquilo voltar, só um homem sabe enfrentá-lo: Quíron, um antigo mestre recluso no topo das montanhas selvagens, ao norte.','Dizem que treinou metade dos guerreiros que esta terra já teve. É frio e desconfiado, e raramente recebe alguém. Mas é o único capaz de ensinar alguém a sobreviver ao que vimos.',{n:'{n}',t:'Eu vou encontrá-lo.'}]},
   onEnd(n){if(n.fin)Game.beginAscent();else n.talked=false}},
+ {room:'helia',sqOnly:true,x:520,y:440,name:'Guarda de Aço Remanescente',wp:'spear',pal:{armor:'#9aa4b0',trim:'#d6b25e',cape:'#4a5a6a',skin:'#c79d7b',hair:'#2a1a12',leg:'#3a3a44',eye:'#222'},
+  lines:['Os portões estão livres, viajante. O povo trabalhou dias para remover as estátuas de pedra que bloqueavam as entradas.','Eram nossos vizinhos, nossos soldados. Cada um foi carregado com cuidado até o templo, onde prestamos homenagem aos que viraram pedra.','Agora as estradas estão abertas. Vá, e que os deuses, ou a razão, o acompanhem.']},
+ {room:'cn2',x:200,y:300,name:'Espírito da Sacerdotisa',pal:{armor:'#9ab0c8',trim:'#d8e4f0',cape:'#6a88a8',skin:'#c8d8e4',hair:'#e0e8f0',leg:'#8aa0b8',eye:'#9cf'},
+  linesFn(){const s=Game.bq.cn;return s===0?['Viajante... as cavernas de Cnosso estão abertas, mas quem entra sem guia fica eternamente perdido, e morre de fome na escuridão.','Meu tear guardava o Novelo de Fio Luminoso. Saqueadores da Ordem da Nova Coroa o roubaram e me prenderam entre estas ruínas.','Liberte-me deles, e o novelo será seu.']:s===1?['Eles ainda estão aqui. Ouça o ferro das botas entre as ruínas.']:s===2?['Livre, enfim! Tome o Novelo de Fio Luminoso. Prenda a ponta na entrada do labirinto, e ele marcará o caminho de volta.','Que a sanidade o acompanhe.']:['O fio o guiará. Vá com cuidado e não solte a ponta.']},
+  onEnd(){const b=Game.bq;if(b.cn===0){b.cn=1;Game.pathFight(['cultista','cultista'])}else if(b.cn===2){b.cn=3;Game.perks=Game.perks||{};Game.perks.fio=1;toast('Novelo de Fio Luminoso obtido: ele marcará seu caminho no labirinto')}}},
+ {room:'me3',x:210,y:470,name:'Pescador de Estátuas',pal:{armor:'#6a7a8a',trim:'#c8b060',cape:'#3a4a5a',skin:'#d9b08c',hair:'#2a1a12',leg:'#3a3a4a',eye:'#222'},
+  linesFn(){const s=Game.bq.me;return s===0?['Meu irmão... ali, de pedra. Ele a olhou só um instante.','Dizem que há um amuleto de proteção num baú, nos penhascos de cima, à direita. Se o trouxer, talvez o olhar dela não prenda ninguém por tanto tempo.']:s===1?['O baú fica nos penhascos, ao alto. Cuidado com as criaturas de pedra.']:s===2?['O amuleto! Fique com ele. Que proteja onde não protegeu meu irmão.']:['Obrigado, viajante. Meu irmão descansa melhor agora.']},
+  onEnd(){const b=Game.bq;if(b.me===0)b.me=1;else if(b.me===2){b.me=3;Game.perks=Game.perks||{};Game.perks.amuPet=1;toast('Amuleto Anti-Petrificação: a paralisia da Medusa dura menos')}}},
+ {room:'ce2',x:480,y:310,name:'Caronte, o Barqueiro',pal:{armor:'#2a2a3a',trim:'#8a8aa0',cape:'#1a1a2a',skin:'#9a968c',hair:'#aaa8a0',leg:'#1a1a24',eye:'#222'},
+  linesFn(){return Game.bq.cm?['O bolo está pronto. Arremesse-o em plena luta (F) e uma cabeça de Cérbero dormirá. Não o desperdice.']:['Poucos chegam às margens do Aqueronte com o fôlego inteiro.','A besta é incorruptível: três cabeças atentas e um ganido que atordoa quem estiver perto. Atacá-la de frente é suicídio.','Colha mel dos mortos e asfódelo soporífero pelas margens, e misture-os no altar de pedra. Um bolo bem feito faz dormir até uma cabeça de Cérbero.']}},
+ {room:'ce3',x:260,y:340,name:'Alma Errante',pal:{armor:'#8a9aa8',trim:'#c8d4dc',cape:'#7a8a98',skin:'#c8d0d8',hair:'#9aa8b4',leg:'#7a8a98',eye:'#222'},lines:['Filho de Tífão e Equidna... irmão da Hidra de Lerna e do Leão de Nemeia...','Hades o fez guardião: nenhum morto escapa, nenhum vivo entra sem licença.']},
+ {room:'ce3',x:700,y:340,name:'Alma Sussurrante',pal:{armor:'#8a9aa8',trim:'#c8d4dc',cape:'#7a8a98',skin:'#c8d0d8',hair:'#9aa8b4',leg:'#7a8a98',eye:'#222'},lines:['Onde a baba dele cai, nasce o acônito. Não toque nas flores roxas.','Ele é leal... é só isso que ele sabe ser.']},
  // ---- Região Helíaca: doadores de missões secundárias (só após o treino com Quíron) ----
  qg('helia',190,400,'Leandro',1,['#7a6a8a','#c8a15a','#4a3a5a','#d9b08c','#b8b0a8','#3a3a4a']),
  qg('helia',800,380,'Sábio Dionísio',4,['#5a4a3a','#c8a15a','#3a2a1e','#d2a883','#e8e4dc','#3a2e22']),
@@ -1641,6 +1788,12 @@ const GUARD_DEF={room:'vila',name:'Soldado da Ordem',mute:true,wp:'spear',pal:{a
 function mkNpcs(){
   const L=NPC_DEFS.map(d=>new NPC(d));
   [[330,400],[420,460],[640,440],[700,400],[850,350],[150,350],[540,470],[300,340]].forEach(([x,y],i)=>L.push(new NPC({room:'helia',x,y,name:'Cidadão Petrificado',mute:true,petrified:true,lore:true,pal:PAL_STONE,face:(i*1.9)%6.28,lines:['']})));
+  [120,330,600,830].forEach((dx,i)=>[-18,18].forEach((o,j)=>L.push(new NPC({room:'helia',x:dx+o,y:198,name:'Cidadão Petrificado',mute:true,petrified:true,wp:j?'spear':null,pal:PAL_STONE,face:(dx+j*2+i)%6.28,lines:['']}))));
+  [[200,330],[360,260],[560,300],[720,270],[820,380],[300,430]].forEach(([x,y],i)=>L.push(new NPC({room:'me3',x,y,name:'Soldado Petrificado',mute:true,petrified:true,wp:i%2?'spear':null,pal:PAL_STONE,face:(i*2.3)%6.28,lines:['']})));
+  L.push(new NPC({room:'me3',x:150,y:470,name:'Estátua do Irmão',mute:true,petrified:true,pal:PAL_STONE,face:1.2,lines:['']}));
+  L.push(new NPC({room:'me2',x:200,y:300,name:'Mestre Quíron',wp:'spear',pal:PAL_Q,lines:[''],
+    linesFn(){const s=Game.bq.ec;return s===0?['Você quer enfrentar a Górgona. Então precisa da Faixa. Mas eu não a entrego de graça.','Prove que sabe enxergar sem olhos: atravesse o percurso cego e esquive de quatro pêndulos pelo som. Faça isso, e a Faixa é sua.']:s===1?['Escute. O som diz onde o perigo está.']:s===2?['Quatro esquivas, de olhos vendados. Esta é a Faixa de Tecido Cego. Pressione V para usá-la: esconda o olhar, nunca o juízo.']:['Use a Faixa só quando ela abrir os olhos. Com ela, você enxergará o calor do corpo dela, sem ser visto.']},
+    onEnd(){const b=Game.bq;if(b.ec===0){b.ec=1;Game.eco=0}else if(b.ec===2){b.ec=3;Game.venda=true;Game.perks=Game.perks||{};toast('Faixa de Quíron obtida (V): com ela você vê o rastro de calor da Medusa')}}}));
   return L;
 }
 class NPC{
@@ -1689,6 +1842,7 @@ function drawProp(t,x,y,v){
   if(t==='cave'){sh(40);ctx.fillStyle='#4a453c';ctx.beginPath();ctx.arc(x,y-4,34,Math.PI,0);ctx.fill();ctx.fillStyle='#0a0808';ctx.beginPath();ctx.arc(x,y-4,22,Math.PI,0);ctx.fill();return}
   if(t==='perch'){ctx.fillStyle='#8f887b';ctx.beginPath();ctx.ellipse(x,y-4,42,16,0,0,7);ctx.fill();ctx.fillStyle='#a79f90';ctx.beginPath();ctx.ellipse(x,y-9,42,16,0,0,7);ctx.fill();return}
   if(t==='ice'){sh(34);ctx.fillStyle='#9fd4ee';ctx.fillRect(x-22,y-40,44,40);ctx.fillStyle='#d8f0ff';ctx.fillRect(x-22,y-40,44,8);ctx.strokeStyle='rgba(255,255,255,.7)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-10,y-34);ctx.lineTo(x+6,y-8);ctx.stroke();return}
+  if(t==='flor'){ctx.strokeStyle='#2a4a2a';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-8);ctx.stroke();ctx.fillStyle='#4a2a6a';[-6,0,6].forEach(d=>{ctx.beginPath();ctx.arc(x+d,y-8-Math.abs(d)*.5,4,0,7);ctx.fill()});return}
   if(t==='pillar'){drawPillar(x,y);return}
   if(t==='stall'){sh(38);ctx.fillStyle='#4a3220';ctx.fillRect(x-34,y-44,4,44);ctx.fillRect(x+30,y-44,4,44);ctx.fillStyle='#6a4a2a';ctx.fillRect(x-34,y-20,68,20);
     for(let k=0;k<6;k++){ctx.fillStyle=k%2?'#efe6cf':((x/10|0)%2?'#a8302a':'#2a5a8a');ctx.fillRect(x-36+k*12,y-74,12,28)}
@@ -1971,6 +2125,30 @@ const FOES={
  atleta:{name:'ATLETA',hp:100,r:16,spd:1,dmg:1,kind:'human',bare:true,pal:{armor:'#c9a070',trim:'#e8dcc0',cape:'#8a6a3a',skin:'#c9966e',hair:'#2a1a12',leg:'#8a6a3a',eye:'#222'},picks:['swing','thrust']},
  elemental:{name:'ELEMENTAL DE ROCHA',hp:150,r:26,spd:.8,dmg:1.3,kind:'rock',picks:['swing','lunge']}
 };
+Object.assign(BATK,{stomp:{tele:.9,act:.3,rec:.9,range:0,arc:0,dmg:0,sp:1},rocks:{tele:.8,act:.3,rec:.8,range:0,arc:0,dmg:0,sp:1},breath:{tele:.7,act:.3,rec:.8,range:0,arc:0,dmg:0,sp:1},venom:{tele:.8,act:.3,rec:.8,range:0,arc:0,dmg:0,sp:1},howl:{tele:.8,act:.3,rec:.8,range:0,arc:0,dmg:0,sp:1}});
+function spawnSp(b,type){ // ataques de área dos Guardiões: telegrafados no chão, esquivam-se com dash ou posicionamento
+  const p=Game.player,hz=Game.haz,H=(x,y,r,tele,dmg,k)=>hz.push({x:clamp(x,A.x1+20,A.x2-20),y:clamp(y,A.y1+20,A.y2-20),r,t:0,tele,dmg,k,done:false});
+  Game.flashMsg({stomp:'PISÃO TERRESTRE',rocks:'CHUVA DE PEDRAS',breath:'BAFORADA DE FOGO',venom:'NÉVOA VENENOSA',howl:'GANIDO ENSURDECEDOR'}[type]);
+  if(type==='stomp'){H(b.x,b.y,140,.9,22,'ring');for(let i=0;i<3;i++)H(p.x+rnd(-90,90),p.y+rnd(-70,70),34,1.1+i*.25,12,'rock')}
+  if(type==='rocks')for(let i=0;i<5;i++)H(p.x+rnd(-110,110),p.y+rnd(-80,80),32,.9+i*.2,14,'rock');
+  if(type==='breath')for(let i=1;i<=3;i++)H(b.x+Math.cos(b.face)*(60+i*55),b.y+Math.sin(b.face)*(60+i*55),42,.7+i*.12,16,'fire');
+  if(type==='venom')H(p.x,p.y,75,.8,0,'pool');
+  if(type==='howl')H(b.x,b.y,160,.8,10,'howl');
+}
+function drawThread(pts){
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';const k=.6+.4*Math.sin(Game.t*3);
+  ctx.strokeStyle='rgba(200,220,255,'+(.25+.25*k)+')';ctx.lineWidth=8;ctx.beginPath();pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,'+(.5+.3*k)+')';ctx.lineWidth=2.5;ctx.stroke();ctx.restore();
+}
+function drawSlow(zs){
+  zs.forEach(([x,y,r])=>{const g=ctx.createRadialGradient(x,y,4,x,y,r);g.addColorStop(0,'rgba(40,20,60,.55)');g.addColorStop(1,'rgba(40,20,60,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();
+    ctx.strokeStyle='rgba(180,170,200,.35)';ctx.lineWidth=2;for(let i=0;i<5;i++){const a=i*1.256+Game.t*.4;ctx.beginPath();ctx.moveTo(x+Math.cos(a)*r*.3,y+Math.sin(a)*r*.2);ctx.lineTo(x+Math.cos(a)*r*.8,y+Math.sin(a)*r*.5);ctx.stroke()}});
+}
+function drawHaz(h){
+  const k=Math.min(1,h.t/h.tele),col=h.k==='fire'?'255,120,40':h.k==='pool'?'90,200,70':h.k==='rock'?'200,180,140':'230,70,60';
+  if(!h.done){ctx.fillStyle='rgba('+col+','+(.12+.2*k)+')';ctx.beginPath();ctx.arc(h.x,h.y,h.r,0,7);ctx.fill();ctx.strokeStyle='rgba('+col+',.75)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(h.x,h.y,h.r*k,0,7);ctx.stroke()}
+  else if(h.k==='pool'){ctx.fillStyle='rgba(90,200,70,.28)';ctx.beginPath();ctx.arc(h.x,h.y,h.r,0,7);ctx.fill()}
+}
 class Foe extends Boss{
   constructor(kind){Foe.pending=kind;super();this.kind=kind}
   reset(){super.reset();const c=FOES[this.kind||Foe.pending];Object.assign(this,{x:W/2,y:240,r:c.r,hp:c.hp,maxHp:c.hp,ghost:c.hp,name:c.name,pal:c.pal||PAL_B,spear:false,bars:true,noPhase:true,dmgMul:c.dmg,cd:1.2,cfg:c})}
@@ -2001,7 +2179,8 @@ class Foe extends Boss{
 const PAL_M={armor:'#3a5a4a',trim:'#c8b060',cape:'#1a3a2a',skin:'#8ab08a',hair:'#2a5a3a',leg:'#2a3a2a',eye:'#333'};
 class Medusa extends Boss{ // a Venda esconde os olhos; ao abri-los, o olhar petrifica
   reset(){super.reset();Object.assign(this,{x:W/2,y:240,r:19,hp:150,maxHp:150,ghost:150,pal:PAL_M,spear:false,name:'MEDUSA',bars:true,noPhase:true,dmgMul:1.3,cd:1.2})}
-  pick(d){const r=Math.random();return r<.45?'gaze':(d<135?(r<.75?'swing':'thrust'):'thrust')}
+  update(dt,p){this.spCd=(this.spCd==null?5:this.spCd)-dt;super.update(dt,p)}
+  pick(d){if(this.spCd<=0&&Math.random()<.5){this.spCd=8;return 'rocks'}const r=Math.random();return r<.45?'gaze':(d<135?(r<.75?'swing':'thrust'):'thrust')}
   deco(){
     const x=this.x,y=this.y-43,open=this.state==='tele'&&this.atk&&this.atk.type==='gaze';
     [[-9,-9],[-3,-12],[3,-12],[9,-9]].forEach(([dx,dy],i)=>{ctx.strokeStyle='#2f7a3a';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x+dx,y-6);ctx.quadraticCurveTo(x+dx*1.8,y+dy-8,x+dx*1.5+(i%2?4:-4),y+dy-14);ctx.stroke()});
@@ -2011,7 +2190,8 @@ class Medusa extends Boss{ // a Venda esconde os olhos; ao abri-los, o olhar pet
 class Cerbero extends Boss{
   reset(){super.reset();Object.assign(this,{x:W/2,y:240,r:24,hp:150,maxHp:150,ghost:150,spear:false,name:'CÉRBERO',bars:true,noPhase:true,dmgMul:1.3,cd:1})}
   get spd(){return 1.2}
-  pick(d){return d>170?(Math.random()<.7?'lunge':'thrust'):(Math.random()<.6?'swing':'thrust')}
+  update(dt,p){this.spCd=(this.spCd==null?4:this.spCd)-dt;this.sleepT=Math.max(0,(this.sleepT||0)-dt);this.cdMul=this.sleepT>0?2.2:1;super.update(dt,p)}
+  pick(d){if(this.spCd<=0&&Math.random()<.5){this.spCd=this.sleepT>0?9:6;this.spN=(this.spN||0)+1;return['breath','venom','howl'][this.spN%3]}return d>170?(Math.random()<.7?'lunge':'thrust'):(Math.random()<.6?'swing':'thrust')}
   draw(){
     const x=this.x,y=this.y,fx=Math.cos(this.face),fy=Math.sin(this.face),sw=this.moving?Math.sin(this.walkT*10)*5:0;
     ctx.fillStyle='rgba(0,0,0,.5)';ctx.beginPath();ctx.ellipse(x,y+3,34,11,0,0,7);ctx.fill();
@@ -2027,8 +2207,11 @@ class Cerbero extends Boss{
 }
 class Minotauro extends Boss{ // investida em linha reta: se bater na parede, fica atordoado
   reset(){super.reset();Object.assign(this,{x:W/2,y:240,r:24,hp:150,maxHp:150,ghost:150,pal:{armor:'#5a3a2a',trim:'#8a6a3a',cape:'#2a1a12',skin:'#8a5a3a',hair:'#2a1a12',leg:'#3a2a1e',eye:'#c22'},spear:false,name:'MINOTAURO',bars:true,noPhase:true,dmgMul:1.3,cd:1.2})}
-  pick(d){return d>150&&Math.random()<.6?'charge':(Math.random()<.6?'swing':'thrust')}
+  get spd(){return this.fr?1.35:1}
+  pick(d){if(this.spCd<=0&&Math.random()<.45){this.spCd=7;return 'stomp'}return d>150&&Math.random()<.6?'charge':(Math.random()<.6?'swing':'thrust')}
   update(dt,p){
+    this.spCd=(this.spCd==null?4:this.spCd)-dt;
+    const fr=this.hp<=this.maxHp*.3&&!this.dead;if(fr&&!this.fr)Game.flashMsg('FRENESI FAMINTO');this.fr=fr;this.cdMul=fr?.35:1;
     super.update(dt,p);
     if(this.state==='act'&&this.atk&&this.atk.type==='charge'&&(this.x<A.x1+70||this.x>A.x2-70||this.y<A.y1+50||this.y>A.y2-45)){
       this.state='stun';this.stunT=2.6;this.post=100;this.atk=null;Game.shake=12;burst(this.x,this.y-30,'#ffd98a',20,260,.7,3);
@@ -2081,7 +2264,7 @@ const QACC=[{n:'{n}',t:'Não vou descer. Vi Aroer queimar: meu pai, meu povo, tu
  qi('...'),qi('Sua voz tremeu, e ainda assim você não recuou. Poucos fazem isso.'),
  qi('Muito bem. Eu o ensino. Mas saiba: aqui, sua vida é minha até que eu diga o contrário.')];
 const QUI_DEF={room:'quiron',x:480,y:290,name:'Mestre Quíron',wp:'spear',pal:PAL_Q,lines:[''],
-  linesFn(){if(Game.mode==='sanct')return Game.qStage?QACC:QREF;const n=Game.trophies.length;return Game.mode==='sq'?[qi('As missões da região são suas para escolher. Quando estiver pronto, diga: entregamos os troféus.')]:n===0?[qi('Os guardiões esperam: o Templo Esquecido, as Ruínas Subterrâneas e o Labirinto. As portas atrás de mim levam a eles.'),qi('Use a Venda (V) contra a Medusa. Traga a cabeça, a corrente e os chifres.')]:[qi('Ainda faltam provas. Não volte de mãos vazias.')]},
+  linesFn(){if(Game.mode==='sanct')return Game.qStage?QACC:QREF;const n=Game.trophies.length;return Game.mode==='sq'?[qi('As missões da região são suas para escolher. Quando estiver pronto, diga: entregamos os troféus.')]:n===0?[qi('Os guardiões esperam: o Templo Esquecido, as Ruínas Subterrâneas e o Labirinto. As portas atrás de mim levam a eles.'),qi('Cada guardião exige um item que só se conquista no caminho: o fio, a faixa e a oferenda. Eu não os entrego. Traga a cabeça, a corrente e os chifres.')]:[qi('Ainda faltam provas. Não volte de mãos vazias.')]},
   onEnd(){if(Game.mode==='sq')Game.askReturn();else if(Game.mode==='sanct')Game.sanctNext()}};
 const BOSS_INTRO={medusa:'Medusa mantém uma Venda sobre os olhos. Quando a retira, o olhar petrifica quem estiver à frente. Vista a Venda (V) quando o cone vermelho surgir.',cerbero:'Das ruínas ecoa um uivo triplo: Cérbero, preso a uma corrente de aço, desperta. É rápido: esquive nas investidas.',minotauro:'No labirinto, o Minotauro raspa o chão. Se errar a investida e bater na parede, ficará atordoado.'};
 const TROPHY={templo:{name:'Cabeça de Medusa',line:'A Venda caiu, e o olhar dela morreu com ela. Sob a venda, um selo de cera: uma coroa dentro de um círculo.'},ruinas:{name:'Corrente de Cérbero',line:'A fera tombou. A corrente que a prendia é de aço trabalhado, e traz uma insígnia da Ordem da Nova Coroa.'},labirinto:{name:'Chifres do Minotauro',line:'O Minotauro cai. Parto os chifres como prova... e há um cravo de ferro profanado fincado em um deles: Magia Profanada.'}};
@@ -2170,7 +2353,7 @@ const TQ=[
  {id:8,title:'A Lenda do Antigo Mestre',giver:'Tumba Antiga',who:'a Tumba Antiga',g:3,obj:'Leia as 3 placas de pedra desta área',desc:'Ler as 3 placas de pedra do topo e responder a uma pergunta de Quíron.',
   offer:['(Uma lápide coberta de líquen, ao lado do santuário. As inscrições falam de três placas de pedra espalhadas pelo topo do morro.)'],
   remind:['(Faltam placas de pedra. Procure-as espalhadas pelo topo do morro.)'],done:['(As três placas, juntas, contam a origem da disciplina helíaca: um juramento antigo de proteger os fracos.)','(Passos atrás de você. Quíron lê a lápide sobre o seu ombro.)'],after:'(Silêncio. Só a pedra.)',perk:{lore:1},msg:'Sabedoria Helíaca: o lore do combate da região foi registrado.',
-  quiz:{t:'Quíron pergunta: de onde vem a disciplina de um guerreiro?',o:['Do medo de perder.','De um motivo maior do que a própria dor.','Da força dos braços.'],ok:1,good:'Sim. Foi o que os antigos gravaram. Lembre-se disso quando a espada pesar.',other:'Parte da verdade. Releia as placas: eles gravaram outra coisa.'},
+  quiz:{t:'Quíron pergunta: de onde vem a disciplina de um guerreiro?',o:[{a:'rac',t:'Do estudo e da razão: entender causa e efeito antes de golpear.',r:'Os antigos também escreveram sobre método. A razão afia a espada.'},{a:'trad',t:'Do respeito aos ritos e aos mistérios dos antigos.',r:'Foi o que gravaram. O rito educa o corpo quando a mente falha.'},{a:'sob',t:'Da vontade firme de quem lidera e sobrevive.',r:'Vontade, sim. Mas nenhuma vontade dura sem um motivo além do próprio trono.'}]},
   items:[[200,440,'Primeira placa: "O guerreiro helíaco não nasce forte: nasce disposto a repetir."'],[480,462,'Segunda placa: "Disciplina é o nome que a coragem usa nos dias comuns."'],[780,440,'Terceira placa: "Quem luta para ser temido se perde; quem luta para proteger encontra o caminho."']].map(([x,y,text])=>({room:'tq8',x,y,label:'Ler a placa de pedra',kind:'stone',text}))},
  {id:9,title:'A Água da Nascente Congelada',giver:'Servo do Santuário',who:'o Servo',g:0,obj:'Quebre o gelo da nascente com um Ataque Pesado (SHIFT)',desc:'Subir ao ponto mais alto e quebrar o bloco de gelo da nascente com um Ataque Pesado.',
   offer:['O poço do santuário congelou, e o mestre não bebe água de degelo.','A nascente fica no ponto mais alto do morro, sob um bloco de gelo grosso. Só um Ataque Pesado (SHIFT) o racha.'],
@@ -2179,9 +2362,18 @@ const TQ=[
   offer:['Antes de lhe dar aço, preciso saber a quem ele vai servir.','Não responda com a cabeça. Responda com o que você viu naquela noite em Aroer.'],remind:[''],done:[''],after:'',perk:{},msg:''}
 ];
 const Q10Q=[
- {t:'Feche os olhos. Aroer arde, e você ouve os gritos de quem não pôde fugir. O que faz?',o:['Corro o mais longe que puder.','Volto, ainda que trema, para proteger quem eu puder.','Faço os culpados pagarem, custe o que custar.'],ok:1},
- {t:'Eleutéria virou pedra. Você poderia ter salvado alguém, e não salvou. O que faz com essa culpa?',o:['Transformo-a em juramento: nunca mais deixarei um inocente para trás.','Escondo-a e sigo sozinho, sem me importar com mais ninguém.','Deixo que me consuma até eu esquecer.'],ok:0},
- {t:'Se um dia a sua espada servir mais à raiva do que aos inocentes, o que você é?',o:['Um vingador, e isso basta.','Um guerreiro perdido: devo lembrar por que luto.','Um rei, e reis não prestam contas.'],ok:1}
+ {t:'Feche os olhos. Aroer arde, e você ouve os gritos de quem não pôde fugir. O que faz?',o:[
+  {a:'rac',t:'Paro e observo: preciso entender como isso foi planejado antes de agir.',r:'Cabeça fria. Quem entende a causa pode quebrar o efeito. Só lembre: entender não apaga o fogo.'},
+  {a:'trad',t:'Rezo pelos mortos e honro os antigos ritos, mesmo em meio às chamas.',r:'Respeito pelo que veio antes. Isso também é força, desde que não o deixe parado.'},
+  {a:'sob',t:'Tomo o comando de quem restou. Alguém precisa sustentar o reino.',r:'Liderança nasce nas brasas. Só não esqueça: um reino é feito de gente, não de trono.'}]},
+ {t:'Eleutéria virou pedra. Você poderia ter salvado alguém, e não salvou. O que faz com essa culpa?',o:[
+  {a:'sob',t:'Uso-a como lição: o reino não pode se dar ao luxo de fraquejar.',r:'Dureza serve até certo ponto. Depois dele, vira só solidão.'},
+  {a:'rac',t:'Examino o que deu errado e corrijo, sem culpar deuses nem fantasmas.',r:'Método é um bom remédio. Mas há culpas que não cabem em um relatório.'},
+  {a:'trad',t:'Acendo uma vela e peço perdão aos que viraram pedra.',r:'Um gesto pequeno e verdadeiro. Os mortos escutam o que os vivos fazem depois.'}]},
+ {t:'Se um dia a sua espada servir mais à raiva do que aos inocentes, o que você é?',o:[
+  {a:'trad',t:'Um guerreiro perdido: devo lembrar por que luto.',r:'Voltar aos votos é a única bússola de quem se perdeu.'},
+  {a:'sob',t:'Um rei, e reis não prestam contas.',r:'Reis que não prestam contas viram o que a Ordem já é. Pense nisso quando a coroa chamar.'},
+  {a:'rac',t:'Um erro de cálculo: devo reavaliar meus meios e meus fins.',r:'Reavaliar é coragem. Poucos conseguem fazê-lo com a espada na mão.'}]}
 ];
 const CAMP_DEFS=[
  [1,'Mestre Quíron',PAL_Q,'spear'],
@@ -2313,6 +2505,7 @@ const CONTROLS=[
   ['Botão Direito','Defesa / Bloqueio, na direção do personagem (segure; no instante do golpe, apara)'],
   ['SHIFT esq. ou dir.','Ataque pesado: mais lento, maior alcance e dano elevado'],
   ['Q','Usar poção de cura (disponível a partir do treino com Quíron)'],
+  ['F','Arremessar Bolo de Mel soporífero (luta contra Cérbero)'],
   ['Espaço','Perto de um NPC ou portal: conversa, avança as falas e entra no portal. Em combate: esquiva / dash (i-frames)'],
   ['P','Salvamento manual (aparece "Jogo Salvo!")'],
   ['V','Vestir / tirar a Venda (depois que Quíron a entrega)'],
