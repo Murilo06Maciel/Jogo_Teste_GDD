@@ -232,7 +232,7 @@ const Dlg={
     if(!this.on)return;
     if(this.n<this.full.length){this.n=Math.min(this.full.length,this.n+dt*150);$('dt').textContent=this.full.slice(0,this.n|0)}
     else if(!this.block){this.wait+=dt;if(this.wait>2.4)this.next()}
-    if(this.block&&Input.hit(' ')){this.next();Input.flush()}
+    if(this.block&&Input.hit(' ')){if(this.n>=this.full.length){this.next();Input.flush()}}
   }
 };
 
@@ -573,7 +573,7 @@ const Game={
     this.mode='castle';this.duel=false;this.young=true;this.boss=DUMMY;this.armed=true;this.nightTrig=false;this.guardCall=false;this.guardN=null;this.visitedOut=false;this.playerName='';
     this.armorBonus=0;this.trophies=[];this.venda=false;this.blind=false;this.quests={};this.track=0;this.guards=[];this.heliaAttack=false;this.villageAlert=false;this.warrior=false;this.wooden=false;this.ascent=false;this.qStage=0;this.sanctIntro=false;this.crit=[];this.pots=0;this.potMax=3;this.tq={};this.pend=[];this.tgt=[];this.campNpcs=[];this.tqTr=0;this.afin={rac:0,trad:0,sob:0};this.loreSeen={};this.haz=[];this.bq={me:0,cn:0,ec:0,cm:0};this.honey=0;this.cakes=0;
     this.allNpcs=mkNpcs();
-    this.king=new NPC(KING_DEF);this.arturN=new NPC(ARTUR_ESC);this.quironN=new NPC(QUI_DEF);this.lord=this.lord||new OrderLord();
+    this.king=new NPC(KING_DEF);this.arturN=new NPC(ARTUR_ESC);this.orderN=new NPC({room:'gate',x:235,y:330,name:'Comandante Traidor',mute:true,wp:'spear',pal:PAL_L,lines:['']});this.quironN=new NPC(QUI_DEF);this.lord=this.lord||new OrderLord();
     this.player.reset();this.hitstop=0;this.shake=0;this.endT=0;this.msgT=0;this.result='';
     $('obj').classList.remove('on');$('who').textContent='Príncipe de Aroer';Clock.t=.05;Clock.step(0,false);
     this.setRoom('garden',480,450);this.state='explore';
@@ -597,13 +597,13 @@ const Game={
   // ----- salas, NPCs, chefes -----
   roomNpcs(id){
     const m=this.mode;
-    if(m==='escape')return[this.arturN];
+    if(m==='escape')return id==='gate'?[this.arturN,this.orderN]:[this.arturN];
     if(m==='golpe')return[this.king];
     if(m==='camp')return(id==='quiron'?[this.quironN]:[]).concat(this.campNpcs.filter(n=>n.room===id));
     if((m==='mission'||m==='return'||m==='sq'||m==='sanct')&&id==='quiron')return[this.quironN];
     let L=this.allNpcs.filter(n=>n.room===id);
     L=m==='sq'?L.filter(n=>n.sqOnly||(n.lore&&n.mute)):L.filter(n=>!n.sqOnly);
-    if(m==='village'&&this.villageAlert)L=L.concat(this.guards);
+    if(m==='village')L=L.concat(this.guards);
     if(m==='castle'&&this.guardCall&&this.guardN){const g=this.guardN,p=this.player;g.room=id;g.x=clamp(p.x+70,A.x1+20,A.x2-20);g.y=p.y;L=L.concat(g)}
     return L;
   },
@@ -620,7 +620,7 @@ const Game={
     if(m==='escape'&&id==='gate')this.boss=this.lord;
     if(m==='train'||m==='test')this.boss=this.quiron;
     if(m==='mission'&&R.boss){this.boss=this.mBoss(R.boss);Dlg.say([{n:'Narrador',t:BOSS_INTRO[R.boss]}],false)}
-    this.haz=[];this.trail=[];this.pp=null;
+    this.haz=[];this.trail=[];this.pp=null;if(m!=='camp'){this.pend=[];this.tgt=[]}
     if(m==='camp')this.campSetup();
     this.noWeapon=!this.armed;
     this.crit=(R.crit||[]).map(([cx,cy])=>({x:cx,y:cy,hx:cx,hy:cy,s:'idle',t:rnd(0,1.5),ang:0,ph:rnd(0,6),hit:false}));
@@ -711,7 +711,7 @@ const Game={
       if(Math.random()<.25)parts.push(new Particle(480+rnd(-18,18),392,rnd(-8,8),rnd(-50,-20),.9,'#e8f4ff',2));
       if(Math.hypot(p.x-480,p.y-400)<30){this.armed=true;this.noWeapon=false;this.lord.mode='fight';this.lord.cd=1.2;SFX.clang();Dlg.say([art('Isso! Agora derrube-o, Alteza!')],false)}
     }
-    if(m==='village'&&this.villageAlert)this.chaseTick(dt);
+    if(m==='village'){if(this.villageAlert)this.chaseTick(dt);else this.patrolTick(dt)}
     if(m==='helia')this.heliaTick(dt);
     if(m==='climb')this.climbTick(dt);
     if(m==='mission')this.pathTick(dt);
@@ -780,7 +780,7 @@ const Game={
     if(d.needs==='mission'&&this.mode!=='mission')return block([qi(this.mode==='sq'?'Esses guardiões já caíram.':'Ainda não, aprendiz.')]);
     if(d.needs==='sq'&&this.mode!=='sq')return block([this.mode==='helia'?{n:'{n}',t:'Eleutéria está em ruínas e as outras cidades estão fechadas. Preciso encontrar Quíron, nas montanhas, antes de qualquer coisa.'}:this.mode==='mission'?qi('As cidades podem esperar, aprendiz. Primeiro, os três guardiões.'):{n:'{n}',t:'Ainda não é hora de ir até lá.'}]);
     if(((this.mode==='sq'||this.mode==='mission')||(this.mode==='camp'&&this.boss instanceof Foe))&&this.boss&&this.boss!==DUMMY&&!this.boss.dead)return block([{n:'Narrador',t:'A saída está selada: não há como fugir da luta.'}]);
-    if(this.mode==='escape'&&!((this.room==='gallery'&&d.to==='gate')||(this.room==='gate'&&d.to==='gallery')))return block([art('Por aí não, Alteza! O fogo e os traidores tomaram tudo!')]);
+    if(this.mode==='escape'&&!((this.room==='gallery'&&d.to==='gate')||(this.room==='gate'&&d.to==='gallery')))return;
     this.state='wait';$('prompt').style.display='none';
     transition(()=>{if(d.mode)this.mode=d.mode;this.setRoom(d.to,d.sx,d.sy||A.y1+80);Input.keys={};this.state='explore';this.syncStage()});
   },
@@ -840,25 +840,26 @@ const Game={
     if(this.mode==='sq'){this.foeDone();return}
     if(this.mode==='camp'){this.campFoeDone();return}
     this.state='dialogue';
-    Dlg.say([art('Alteza... conseguimos. Mas ouça: eles virão em ondas, e este portão não pode cair.'),
-      art('Eu fico. Seguro os guardas traidores aqui. Corra para a noite e viva: é a minha última ordem.'),
-      art('Vá! E lembre-se: o motivo pelo qual se luta importa mais do que a força do braço.')],true,
+    Dlg.say([art('Alteza... conseguimos. Mas ouça: eles virão em ondas, e este portão não vai aguentar.'),
+      art('Eu fico para trás. Vou traçar uma linha de defesa aqui e segurar os guardas traidores o máximo que puder.'),
+      art('Corra, Alteza! Fuja sozinho, e não olhe para trás. Essa é a minha última ordem.'),
+      art('E lembre-se: o motivo pelo qual se luta importa mais do que a força do braço.')],true,
       ()=>{SFX.clang();cardSeq(['Artur ficou para trás, no portão.','ANOS DEPOIS…'],()=>this.initVillage())});
   },
   // ----- vila e fuga sem armas -----
   initVillage(){
-    this.mode='village';this.young=false;this.boss=DUMMY;this.armed=false;this.villageAlert=false;this.guards=[];this.armorBonus=0;
-    this.allNpcs=mkNpcs();
+    this.mode='village';this.young=false;this.boss=DUMMY;this.armed=false;this.villageAlert=false;this.armorBonus=0;
+    this.allNpcs=mkNpcs();this.guards=VPATH.map(w=>{const g=new NPC({...GUARD_DEF,x:w[0][0],y:w[0][1]});g.wi=1;g.ca=0;return g});
     this.rp();parts.length=0;this.hitstop=0;this.shake=0;
     Clock.t=.3;Clock.step(0,false);$('obj').classList.remove('on');
     this.setRoom('vila',480,470);this.syncStage();this.state='wait';
     Dlg.say([{n:'Narrador',t:'Anos depois, o príncipe vive sob outro nome, para se esconder dos perseguidores de Aroer. Ele escolhe agora o nome de disfarce...'}],true,()=>{
-      askName(()=>{this.state='dialogue';Dlg.say([{n:'Narrador',t:'Os anos passaram. Em uma vila humilde, longe de tudo, {n} vive como camponês, sem armas, escondendo quem realmente é.'}],true,()=>{this.state='explore'})});
+      askName(()=>{this.state='dialogue';Dlg.say([{n:'Narrador',t:'Os anos passaram. Em uma vila humilde, longe de tudo, {n} vive como camponês, sem armas, escondendo quem realmente é.'},{n:'Narrador',t:'Por toda a região, soldados da Ordem da Nova Coroa invadem as vilas cobrando impostos abusivos e levando à força os jovens para o exército. Desta vila, todos os jovens já foram levados. Restaram só os mais velhos, que em segredo resistem ao regime.'},{n:'Narrador',t:'Dois guardas patrulham a vila. Fique fora dos cones vermelhos de visão deles.'}],true,()=>{this.state='explore'})});
     });
   },
   startChase(){
     this.villageAlert=true;this.state='dialogue';$('prompt').style.display='none';
-    this.guards=[0,1].map(i=>new NPC({...GUARD_DEF,x:100+i*40,y:490+i*25}));this.npcs=this.npcs.concat(this.guards);SFX.door();
+    SFX.door();
     Dlg.say([{n:'Soldado da Ordem',t:'Revistem a vila inteira! O herdeiro de Aroer está escondido aqui!'},{n:'{n}',t:'Eles me encontraram... e eu estou sem armas. Preciso chegar à trilha do bosque antes que me alcancem!'}],true,()=>{this.state='explore';this.syncStage()});
   },
   chaseTick(dt){
@@ -884,7 +885,7 @@ const Game={
     if(!this.heliaIntro){
       this.heliaIntro=true;this.state='dialogue';$('prompt').style.display='none';
       Dlg.say([{n:'Narrador',t:'Eleutéria. Onde havia vozes e mármore branco, resta o estalar do fogo e um silêncio de cinzas.'},
-        {n:'{n}',t:'Estátuas... em cada rua, de braços erguidos e bocas abertas. Eles viram o que os matou.'},
+        {n:'{n}',t:'Estátuas... em cada rua, de braços erguidos e bocas abertas. Eles viram o que os matou.'},{n:'{n}',t:'(Minha ama dizia, nas noites de tempestade, que existem criaturas de asas e garras que transformam homens em pedra. Quando criança, eu acreditava em cada palavra.)'},{n:'{n}',t:'(Depois cresci e aprendi a chamar isso de lenda, conto para assustar crianças. E agora... estas estátuas diante de mim.)'},
         {n:'{n}',t:'Alguém precisa ter sobrevivido. Talvez no que restou do templo, ao centro.'}],true,()=>{this.state='explore'});return;
     }
     this.props.forEach(q=>{if(q[0]==='fire'&&Math.random()<.5)parts.push(new Particle(q[1]+rnd(-8,8),q[2]-30,rnd(-14,14),rnd(-70,-30),rnd(.9,1.8),Math.random()<.45?'#ff9a3a':'#4a4640',rnd(2,4.5)))});
@@ -1066,6 +1067,28 @@ const Game={
       if(h.t>(h.k==='pool'?h.tele+3.5:h.tele+.35))hz.splice(i,1);
     }
   },
+  duelTick(dt){ // Noite do Golpe: Artur trava um duelo com o comandante traidor enquanto o príncipe enfrenta o primeiro chefe
+    const a=this.arturN,o=this.orderN;if(!a||!o)return;
+    if(this.mode==='escape'&&this.room==='gate'){
+      a.duel=true;const k=Math.sin(this.t*3);a.x=150+k*10;a.y=330;a.face=0;a.moving=false;o.x=235-k*10;o.y=330;o.face=Math.PI;
+      this.dT=(this.dT||0)-dt;if(this.dT<=0){this.dT=rnd(.5,1.1);burst((a.x+o.x)/2,300,'#ffe9a8',8,200,.3,2);SFX.tone('square',1100,700,.05,.035)}
+      this.once('e_gate','Capitão Artur','Alteza! O comandante me prende aqui e não posso ajudá-lo. Resista, e vença sozinho!');
+    }else a.duel=false;
+  },
+  patrolTick(dt){
+    const p=this.player;
+    this.guards.forEach((g,i)=>{
+      const w=VPATH[i],t=w[g.wi],dx=t[0]-g.x,dy=t[1]-g.y,d=Math.hypot(dx,dy);
+      if(d<4)g.wi=(g.wi+1)%w.length;else{g.x+=dx/d*40*dt;g.y+=dy/d*40*dt;g.walkT+=dt;g.moving=true;g.mv=Math.atan2(dy,dx)}
+      this.props.forEach(q=>pushOut(g,q[1],q[2]-4,q[3]));
+      g.ca=(g.mv||0)+Math.sin(this.t*.9+i*2)*.8;g.face=g.mv||0;
+      if(this.state==='explore'&&!this.villageAlert&&Math.hypot(p.x-g.x,p.y-g.y)<GVR+p.r&&Math.abs(angDiff(Math.atan2(p.y-(g.y-14),p.x-g.x),g.ca))<=Math.PI/2)this.startChase();
+    });
+  },
+  grayCaught(){
+    this.state='wait';this.flashMsg('VISTO!');SFX.tone('square',420,200,.4,.2);
+    transition(()=>{const p=this.player;p.x=480;p.y=470;p.atk=null;this.state='explore';toast('Os Cinzentos o viram. Recomece o corredor, longe dos cones.')});
+  },
   once(k,n,t){this.loreSeen=this.loreSeen||{};if(this.loreSeen[k])return;this.loreSeen[k]=1;Dlg.say([{n,t}],false)},
   pathFight(arr){this.foeQ=arr.slice();this.pfoe=true;this.spawnFoe()},
   pathFoeDone(){
@@ -1083,25 +1106,20 @@ const Game={
       else say('Narrador','Um altar de pedra gasta. Faltam ingredientes: mel dos mortos e asfódelos soporíferos ('+(this.honey||0)+'/3).');
     }else{this.state='explore';this.honey=(this.honey||0)+1;toast('Ingrediente colhido ('+this.honey+'/3)')}
   },
-  pathEco(dt){
-    const p=this.player;
-    if(!this.pend||!this.pend.length)this.pend=[[340,2.2,0,150],[395,2.7,2,170],[450,3,4,140]].map(([y,w,ph,amp])=>({y,w,ph,amp,x:480,cd:0,sc:0}));
-    this.blind=true;
-    this.pend.forEach(q=>{
-      q.x=480+Math.sin(this.t*q.w+q.ph)*q.amp;q.cd-=dt;q.sc-=dt;const d=Math.hypot(p.x-q.x,p.y-q.y);
-      if(d<170&&q.sc<=0){SFX.tone('sine',260,180,.1,.12);q.sc=Math.max(.25,d/420)}
-      if(!p.dead&&d<44&&q.cd<=0){
-        if(p.dashT>0||p.iT>0){q.cd=.9;this.eco=(this.eco||0)+1;toast('Esquiva '+this.eco+'/4');if(this.eco>=4){this.bq.ec=2;this.pend=[];this.blind=false;toast('Prova do Eco concluída: fale com Quíron')}}
-        else if(d<22&&p.hurt<=0){q.cd=.9;p.takeDamage(5,q.x,q.y,DUMMY)}
-      }
-    });
-  },
   pathTick(dt){
     const R=ROOMS[this.room];if(!R)return;
     if(this.pfoe&&this.boss===DUMMY&&this.foeQ&&this.foeQ.length)this.spawnFoe();
-    if(this.bq.ec===1&&this.room==='me2')this.pathEco(dt);
     if(R.holes||this.crit.length)this.climbTick(dt);
     const p=this.player;
+    if(R.forceBlind&&this.venda)this.blind=true;
+    if(R.grays)this.npcs.filter(n=>n.gray).forEach(g=>{
+      const c=g.gz;let a;
+      if(c.m==='r')a=c.a+Math.sin(this.t*.7+c.ph)*1.0;
+      else if(c.m==='h'){g.x=g.hx+Math.sin(this.t*c.sp)*c.rng;a=Math.cos(this.t*c.sp)>0?0:Math.PI;g.moving=true;g.walkT+=dt}
+      else{g.y=g.hy+Math.sin(this.t*c.sp)*c.rng;a=Math.cos(this.t*c.sp)>0?Math.PI/2:-Math.PI/2;g.moving=true;g.walkT+=dt}
+      g.ca=a;g.face=a;
+      if(!busy&&!p.dead&&this.state==='explore'&&Math.hypot(p.x-g.x,p.y-g.y)<125+p.r&&Math.abs(angDiff(Math.atan2(p.y-(g.y-14),p.x-g.x),a))<=Math.PI/2)this.grayCaught();
+    });
     if(R.trail&&this.perks&&this.perks.fio){const l=this.trail[this.trail.length-1];if(!l||Math.hypot(p.x-l[0],p.y-l[1])>26){this.trail.push([p.x,p.y]);if(this.trail.length>300)this.trail.shift()}}
     if(R.slow){const pp=this.pp;if(pp&&p.dashT<=0&&R.slow.some(([x,y,r])=>Math.hypot(p.x-x,p.y-y)<r)){p.x=pp.x+(p.x-pp.x)*.4;p.y=pp.y+(p.y-pp.y)*.4}this.pp={x:p.x,y:p.y}}
     if(R.amb){
@@ -1193,7 +1211,7 @@ const Game={
   win(){this.state='win';this.result='win';this.endT=1.4},
   lose(){this.state='lose';this.result='lose';this.endT=1.2},
   update(dt){
-    this.t+=dt;this.hazTick(dt);
+    this.t+=dt;this.hazTick(dt);this.duelTick(dt);
     if(Input.hit('r')&&this.mode==='tutorial'){this.initTutorial();return}
     Dlg.update(dt);
     this.nearNpc=false;
@@ -1256,7 +1274,7 @@ const Game={
     ctx.drawImage(tut?BGG:ROOM_BG[this.room],0,0);
     if(!R.outdoor)drawWindows(R);
     b.drawTele();
-    const list=tut?[]:BR.map(r=>({y:r.y,f:()=>drawBrazier(r)})).concat(this.props.map(q=>({y:q[2],f:()=>drawProp(q[0],q[1],q[2],q[4])})),this.npcs.map(n=>({y:n.y,f:()=>n.draw()})),(this.perks&&this.perks.fio&&ROOMS[this.room].trail&&this.trail&&this.trail.length>1?[{y:A.y1-4,f:()=>drawThread(this.trail)}]:[]),(ROOMS[this.room].slow?[{y:A.y1-3,f:()=>drawSlow(ROOMS[this.room].slow)}]:[]),((this.boss instanceof Cerbero&&this.boss.sleepT>0)?[{y:this.boss.y+40,f:()=>{ctx.fillStyle='#cfe8ff';ctx.font='700 18px Cinzel,serif';ctx.textAlign='center';ctx.fillText('Z z',this.boss.x,this.boss.y-70)}}]:[]),(this.haz||[]).map(h=>({y:A.y1-5,f:()=>drawHaz(h)})),(this.crit||[]).map(c=>({y:c.y,f:()=>drawCrit(c)})),((this.mode==='camp'||this.mode==='mission')?(this.pend||[]).map(q=>({y:q.y+1,f:()=>drawPend(q)})).concat((this.tgt||[]).map(q=>({y:q.y,f:()=>drawTgt(q)}))):[]),(this.mode==='escape'&&this.room==='gate'&&!this.armed?[{y:400,f:drawSwordItem}]:[]),(((this.mode==='sq'?this.questObjs():this.mode==='camp'?this.tqObjs():this.mode==='mission'?this.loreObjs():[])).map(o=>({y:o.y,f:()=>drawQObj(o)}))));
+    const list=tut?[]:BR.map(r=>({y:r.y,f:()=>drawBrazier(r)})).concat(this.props.map(q=>({y:q[2],f:()=>drawProp(q[0],q[1],q[2],q[4])})),this.npcs.map(n=>({y:n.y,f:()=>n.draw()})),(this.perks&&this.perks.fio&&ROOMS[this.room].trail&&this.trail&&this.trail.length>1?[{y:A.y1-4,f:()=>drawThread(this.trail)}]:[]),(this.mode==='village'&&!this.villageAlert?this.guards.map(g=>({y:g.y-2,f:()=>drawCone(g.x,g.y,g.ca||0,GVR,'230,50,50')})):[]),(ROOMS[this.room].grays?this.npcs.filter(n=>n.gray).map(g=>({y:A.y1-2,f:()=>drawCone(g.x,g.y,g.ca||0,125,'230,40,40')})):[]),(ROOMS[this.room].slow?[{y:A.y1-3,f:()=>drawSlow(ROOMS[this.room].slow)}]:[]),((this.boss instanceof Cerbero&&this.boss.sleepT>0)?[{y:this.boss.y+40,f:()=>{ctx.fillStyle='#cfe8ff';ctx.font='700 18px Cinzel,serif';ctx.textAlign='center';ctx.fillText('Z z',this.boss.x,this.boss.y-70)}}]:[]),(this.haz||[]).map(h=>({y:A.y1-5,f:()=>drawHaz(h)})),(this.crit||[]).map(c=>({y:c.y,f:()=>drawCrit(c)})),((this.mode==='camp'||this.mode==='mission')?(this.pend||[]).map(q=>({y:q.y+1,f:()=>drawPend(q)})).concat((this.tgt||[]).map(q=>({y:q.y,f:()=>drawTgt(q)}))):[]),(this.mode==='escape'&&this.room==='gate'&&!this.armed?[{y:400,f:drawSwordItem}]:[]),(((this.mode==='sq'?this.questObjs():this.mode==='camp'?this.tqObjs():this.mode==='mission'?this.loreObjs():[])).map(o=>({y:o.y,f:()=>drawQObj(o)}))));
     list.push({y:p.y,f:()=>drawPlayer(p)},{y:b.y,f:()=>drawBoss(b)});
     list.sort((u,v)=>u.y-v.y).forEach(o=>o.f());
     drawSlashes(p,b);
@@ -1265,7 +1283,7 @@ const Game={
     R.outdoor?gardenLight(p,this.lightList()):lighting(p,this.fireLights());
     if(this.mode==='escape'){ctx.fillStyle='rgba(120,30,10,.26)';ctx.fillRect(0,0,W,H)}
     if(R.shade){ctx.fillStyle=`rgba(4,14,8,${R.shade})`;ctx.fillRect(0,0,W,H)}
-    if(this.blind||ROOMS[this.room].fog){const bg=ctx.createRadialGradient(p.x,p.y-20,70,p.x,p.y-20,230);bg.addColorStop(0,'rgba(0,0,0,0)');bg.addColorStop(1,'rgba(0,0,0,.94)');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H)}
+    if(this.blind||ROOMS[this.room].fog){const bg=ctx.createRadialGradient(p.x,p.y-20,ROOMS[this.room].forceBlind?30:70,p.x,p.y-20,ROOMS[this.room].forceBlind?110:230);bg.addColorStop(0,'rgba(0,0,0,0)');bg.addColorStop(1,'rgba(0,0,0,.94)');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H)}
     if(this.blind&&b instanceof Medusa&&!b.dead){ctx.save();ctx.strokeStyle='rgba(255,170,60,'+(.55+.25*Math.sin(this.t*6))+')';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(b.x,b.y-26,22,34,0,0,7);ctx.stroke();ctx.fillStyle='rgba(255,140,40,.18)';ctx.fill();if(b.state==='tele'&&b.atk&&b.atk.type==='gaze'){ctx.strokeStyle='rgba(255,230,120,.6)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(b.x,b.y-40);ctx.lineTo(b.x+Math.cos(b.face)*380,b.y-40+Math.sin(b.face)*380);ctx.stroke()}ctx.restore()}
     if(this.room==='gate'&&this.mode==='castle'){ctx.globalCompositeOperation='lighter';const gg=ctx.createRadialGradient(700,A.y1-30,5,700,A.y1-30,200);gg.addColorStop(0,'rgba(200,255,150,.35)');gg.addColorStop(1,'rgba(200,255,150,0)');ctx.fillStyle=gg;ctx.fillRect(0,0,W,H);ctx.globalCompositeOperation='source-over'}
     ctx.restore();
@@ -1528,7 +1546,7 @@ const ROOMS={
   props:[['barn',210,262,46],['hay',120,425,16],['hay',165,450,14],['cow',250,420,14],['cow',315,458,14],['cow',200,478,14],['fence',230,388,5],['fence',290,388,5],['fence',350,388,5],['scarecrow',130,340,10],
    ['scarecrow',560,330,10],['hay',640,450,16],['hay',700,472,14],['fence',500,410,5],['fence',560,410,5],['fence',620,410,5],['lamp',700,300,6],['lamp',430,300,6],['tree',90,495,16],['tree',885,505,16],['tree',470,495,16]]},
  vila:{name:'Vila do Exílio',area:'village',mode:'village',outdoor:true,sky:['#78acd8','#f4e2b4'],doors:[{x:820,to:'bosque1',sx:150,sy:470,label:'Trilha do Bosque',c1:'#bfe0a0',c2:'#4a7a3a',needs:'alert'}],
-  props:[['hut',200,300,36],['hut',360,262,36],['hut',700,282,36],['hut',860,372,36],['well',500,410,18],['campfire',480,330,12],['hen',320,448,6],['hen',600,466,6],['hay',250,444,16],['fence',150,420,5],['tree',90,486,16],['tree',885,492,16],['tree',600,236,16]]},
+  props:[['hut',200,300,36],['hut',360,262,36],['hut',700,282,36],['hut',860,372,36],['hut',520,222,36],['well',500,410,18],['campfire',480,330,12],['hen',320,448,6],['hen',600,466,6],['hay',250,444,16],['fence',150,420,5],['tree',90,486,16],['tree',885,492,16],['tree',600,236,16]]},
  bosque1:{name:'Bosque de Transição',area:'forest',mode:'forest',outdoor:true,shade:.3,doors:[{x:820,to:'bosque2',sx:130,sy:330,label:'Trilha',c1:'#d8e8a8',c2:'#4a6a3a'}],enter(){Clock.t=.62;Clock.step(0,false)},
   props:genTrees(11,(x,y)=>distSeg(x,y,150,490,830,125)>80)},
  bosque2:{name:'Bosque de Transição',area:'forest',mode:'forest',outdoor:true,shade:.3,doors:[{side:'R',y1:220,y2:430,to:'helia',sx:110,sy:400,mode:'helia'}],
@@ -1605,14 +1623,15 @@ Object.assign(ROOMS,{
  me1:{name:'Medusa 1: Terras Áridas da Cirenaica',area:'quiron',outdoor:true,og:'monte',sky:SKYM,amb:'me',
   enter(){Game.once('e_me1','Narrador','Um vale seco, de vegetação morta, sob um crepúsculo que não termina. O vento assobia nas fendas como serpentes distantes.')},
   props:[['rubble',130,330,10],['rubble',860,360,10],['rubble',480,300,10],['rubble',330,440,10]],
+  items:[{id:'amuleto',x:850,y:235,label:'Abrir o baú nos penhascos'}],
   lore:L3('Mural: Medusa era sacerdotisa de Atena, mortal, devota e casta, famosa pelos cabelos.','Mural: Poseidon a violou dentro do templo. Atena, em vez de punir o culpado, puniu a vítima.','Mural: banida para o extremo do mundo, Medusa viveu isolada, cercada por quem ousou encará-la.'),
   doors:[Object.assign(K('quiron',400),{label:'Voltar ao Santuário'}),F('me2','Acampamento de Quíron')]},
  me2:{name:'Medusa 2: Acampamento de Quíron',area:'quiron',outdoor:true,og:'monte',sky:SKYM,amb:'me',props:[['campfire',800,430,14],['rubble',620,470,10],['rubble',340,300,10]],
-  doors:[K('me1'),F('me3','Trilha dos Petrificados',{req:()=>Game.venda,deny:'Sem a Faixa de Quíron, o olhar da Górgona me petrificaria antes de eu vê-la.'})]},
- me3:{name:'Medusa 3: Trilha dos Petrificados',area:'quiron',outdoor:true,og:'monte',sky:SKYM,fog:true,amb:'me',crit:[[300,300],[650,330],[480,420],[780,260]],
-  props:[['rubble',130,330,10],['rubble',860,360,10],['rubble',480,300,10]],
-  items:[{id:'amuleto',x:850,y:235,label:'Abrir o baú nos penhascos'}],
-  lore:L3('Estátua de um soldado da Ordem, de mão estendida, o rosto em puro pavor.','Estátuas de animais e guerreiros, todas viradas para o mesmo ponto: a caverna.','O sibilar fica mais alto a cada passo. Algo se move entre as pedras.'),
+  doors:[K('me1'),F('me3','Trilha dos Petrificados',{req:()=>Game.venda,deny:'Sem a Venda, o olhar da Górgona me petrificaria antes de eu vê-la. Preciso falar com Quíron.'})]},
+ me3:{name:'Medusa 3: Corredor dos Cinzentos',area:'quiron',outdoor:true,og:'monte',sky:SKYM,forceBlind:true,amb:'me',sp:[480,470],
+  grays:[{x:260,y:400,m:'r',a:-.3,ph:0},{x:720,y:350,m:'r',a:Math.PI+.3,ph:2},{x:480,y:290,m:'h',rng:170,sp:.5},{x:200,y:235,m:'r',a:.4,ph:4},{x:790,y:235,m:'v',rng:40,sp:.6},{x:300,y:190,m:'r',a:0,ph:1},{x:660,y:190,m:'r',a:Math.PI,ph:3}],
+  props:[['rubble',130,330,10],['rubble',860,360,10]],
+  lore:L3('Os Cinzentos já foram homens. O olhar dela os esvaziou, e agora vigiam tudo com olhos de brasa.','Não olhe: ouça. Os passos deles arrastam, e os cones de luz vermelha revelam por onde estão olhando.','Adiante, a caverna. Quem passou pelo corredor sem ser visto ainda tem uma chance.'),
   doors:[K('me2'),F('templo','Caverna da Medusa')]},
  // ---- CÉRBERO: Fenda -> Margens (side quest: Oferenda) -> Rio dos Mortos -> Portões de Bronze ----
  ce1:{name:'Cérbero 1: Fenda de Acesso ao Hades',area:'quiron',outdoor:true,og:'periferia',sky:SKYC,amb:'ce',
@@ -1740,7 +1759,7 @@ const NPC_DEFS=[
    'Quando eu crescer, vou ser guarda do rei! ... mas não tem mais rei, né?']},
   // ---- Região Helíaca: Eleutéria destruída (sobreviventes no templo) ----
  {room:'helia',surv:true,x:550,y:350,name:'Sacerdotisa Kalliope',pal:{armor:'#e8e0d0',trim:'#c8a15a',cape:'#a8442a',skin:'#dcb08c',hair:'#2a1a12',leg:'#d9d0be',eye:'#222'},
-  lines:['Foi rápido demais. O céu escureceu de asas, e quem as encarava virava pedra.',
+  lines:['Foi rápido demais. O céu escureceu de asas, e quem as encarava virava pedra. Eu as chamei de lenda a vida inteira, forasteiro... Já não chamo.',
    'Mas houve algo estranho. Antes das harpias, vi figuras de túnicas escuras entre a fumaça, de braços erguidos, como quem rege um coro.',
    'Traziam um símbolo bordado no peito: um círculo e, dentro dele, algo como uma coroa. Sumiram quando o caos começou, como se já tivessem terminado.',
    {n:'{n}',t:'(Um círculo... uma coroa. Já vi isso em algum lugar. Fumaça, uma noite de fogo...)'},
@@ -1758,7 +1777,7 @@ const NPC_DEFS=[
  {room:'cn2',x:200,y:300,name:'Espírito da Sacerdotisa',pal:{armor:'#9ab0c8',trim:'#d8e4f0',cape:'#6a88a8',skin:'#c8d8e4',hair:'#e0e8f0',leg:'#8aa0b8',eye:'#9cf'},
   linesFn(){const s=Game.bq.cn;return s===0?['Viajante... as cavernas de Cnosso estão abertas, mas quem entra sem guia fica eternamente perdido, e morre de fome na escuridão.','Meu tear guardava o Novelo de Fio Luminoso. Saqueadores da Ordem da Nova Coroa o roubaram e me prenderam entre estas ruínas.','Liberte-me deles, e o novelo será seu.']:s===1?['Eles ainda estão aqui. Ouça o ferro das botas entre as ruínas.']:s===2?['Livre, enfim! Tome o Novelo de Fio Luminoso. Prenda a ponta na entrada do labirinto, e ele marcará o caminho de volta.','Que a sanidade o acompanhe.']:['O fio o guiará. Vá com cuidado e não solte a ponta.']},
   onEnd(){const b=Game.bq;if(b.cn===0){b.cn=1;Game.pathFight(['cultista','cultista'])}else if(b.cn===2){b.cn=3;Game.perks=Game.perks||{};Game.perks.fio=1;toast('Novelo de Fio Luminoso obtido: ele marcará seu caminho no labirinto')}}},
- {room:'me3',x:210,y:470,name:'Pescador de Estátuas',pal:{armor:'#6a7a8a',trim:'#c8b060',cape:'#3a4a5a',skin:'#d9b08c',hair:'#2a1a12',leg:'#3a3a4a',eye:'#222'},
+ {room:'me1',x:210,y:470,name:'Pescador de Estátuas',pal:{armor:'#6a7a8a',trim:'#c8b060',cape:'#3a4a5a',skin:'#d9b08c',hair:'#2a1a12',leg:'#3a3a4a',eye:'#222'},
   linesFn(){const s=Game.bq.me;return s===0?['Meu irmão... ali, de pedra. Ele a olhou só um instante.','Dizem que há um amuleto de proteção num baú, nos penhascos de cima, à direita. Se o trouxer, talvez o olhar dela não prenda ninguém por tanto tempo.']:s===1?['O baú fica nos penhascos, ao alto. Cuidado com as criaturas de pedra.']:s===2?['O amuleto! Fique com ele. Que proteja onde não protegeu meu irmão.']:['Obrigado, viajante. Meu irmão descansa melhor agora.']},
   onEnd(){const b=Game.bq;if(b.me===0)b.me=1;else if(b.me===2){b.me=3;Game.perks=Game.perks||{};Game.perks.amuPet=1;toast('Amuleto Anti-Petrificação: a paralisia da Medusa dura menos')}}},
  {room:'ce2',x:480,y:310,name:'Caronte, o Barqueiro',pal:{armor:'#2a2a3a',trim:'#8a8aa0',cape:'#1a1a2a',skin:'#9a968c',hair:'#aaa8a0',leg:'#1a1a24',eye:'#222'},
@@ -1784,22 +1803,25 @@ const KING_DEF={room:'hall',x:480,y:190,name:'Rei Aldren',pal:{armor:'#7a1f26',t
    'Um dia a coroa será sua, e ela pesa mais do que parece. Agora vá, descanse em seus aposentos. Amanhã o mundo continua nos esperando.'],
   onEnd(){Game.startGolpe()}};
 const ARTUR_ESC={room:'gallery',x:0,y:0,name:'Capitão Artur',mute:true,blood:true,follow:true,wp:'sword',pal:PAL_A,lines:['']};
+const VPATH=[[[140,330],[560,330],[560,470],[140,470]],[[800,460],[640,460],[640,340],[800,340]]],GVR=150;
 const GUARD_DEF={room:'vila',name:'Soldado da Ordem',mute:true,wp:'spear',pal:{armor:'#3a1a22',trim:'#a3262a',cape:'#1a1014',skin:'#c79d7b',hair:'#222',leg:'#1a1a1e',eye:'#222'},lines:['']};
 function mkNpcs(){
   const L=NPC_DEFS.map(d=>new NPC(d));
   [[330,400],[420,460],[640,440],[700,400],[850,350],[150,350],[540,470],[300,340]].forEach(([x,y],i)=>L.push(new NPC({room:'helia',x,y,name:'Cidadão Petrificado',mute:true,petrified:true,lore:true,pal:PAL_STONE,face:(i*1.9)%6.28,lines:['']})));
   [120,330,600,830].forEach((dx,i)=>[-18,18].forEach((o,j)=>L.push(new NPC({room:'helia',x:dx+o,y:198,name:'Cidadão Petrificado',mute:true,petrified:true,wp:j?'spear':null,pal:PAL_STONE,face:(dx+j*2+i)%6.28,lines:['']}))));
-  [[200,330],[360,260],[560,300],[720,270],[820,380],[300,430]].forEach(([x,y],i)=>L.push(new NPC({room:'me3',x,y,name:'Soldado Petrificado',mute:true,petrified:true,wp:i%2?'spear':null,pal:PAL_STONE,face:(i*2.3)%6.28,lines:['']})));
-  L.push(new NPC({room:'me3',x:150,y:470,name:'Estátua do Irmão',mute:true,petrified:true,pal:PAL_STONE,face:1.2,lines:['']}));
+  [[200,330],[360,260],[560,300],[720,270],[820,380],[300,430]].forEach(([x,y],i)=>L.push(new NPC({room:'me1',x,y,name:'Soldado Petrificado',mute:true,petrified:true,wp:i%2?'spear':null,pal:PAL_STONE,face:(i*2.3)%6.28,lines:['']})));
+  L.push(new NPC({room:'me1',x:150,y:470,name:'Estátua do Irmão',mute:true,petrified:true,pal:PAL_STONE,face:1.2,lines:['']}));
+  (ROOMS.me3.grays||[]).forEach((c,i)=>L.push(new NPC({room:'me3',x:c.x,y:c.y,name:'Ser Cinzento',mute:true,petrified:true,gray:true,gz:c,gi:i,hx:c.x,hy:c.y,pal:PAL_STONE,face:c.a||0,lines:['']})));
   L.push(new NPC({room:'me2',x:200,y:300,name:'Mestre Quíron',wp:'spear',pal:PAL_Q,lines:[''],
-    linesFn(){const s=Game.bq.ec;return s===0?['Você quer enfrentar a Górgona. Então precisa da Faixa. Mas eu não a entrego de graça.','Prove que sabe enxergar sem olhos: atravesse o percurso cego e esquive de quatro pêndulos pelo som. Faça isso, e a Faixa é sua.']:s===1?['Escute. O som diz onde o perigo está.']:s===2?['Quatro esquivas, de olhos vendados. Esta é a Faixa de Tecido Cego. Pressione V para usá-la: esconda o olhar, nunca o juízo.']:['Use a Faixa só quando ela abrir os olhos. Com ela, você enxergará o calor do corpo dela, sem ser visto.']},
-    onEnd(){const b=Game.bq;if(b.ec===0){b.ec=1;Game.eco=0}else if(b.ec===2){b.ec=3;Game.venda=true;Game.perks=Game.perks||{};toast('Faixa de Quíron obtida (V): com ela você vê o rastro de calor da Medusa')}}}));
+    linesFn(){return Game.bq.ec?['A Venda já é sua. No corredor, a visão será quase nula: escute, memorize e desvie dos cones vermelhos.']:['Há criaturas cujo olhar esvazia quem as encontra. Os Cinzentos, adiante, foram homens como você; hoje vigiam tudo com olhos de brasa.','Esta Venda esconde o mundo de você, e é a única forma de andar por onde ela vive. Vista-a (V): a visão ficará quase nula.','Atravesse o corredor sem entrar nos cones vermelhos deles. Se for visto, recomeça. Que a escuridão seja sua aliada.']},
+    onEnd(){const b=Game.bq;if(!b.ec){b.ec=3;Game.venda=true;toast('Venda obtida (V): a visão fica reduzida. Atravesse o corredor dos Cinzentos sem ser visto')}}}));
   return L;
 }
 class NPC{
   constructor(o){Object.assign(this,{r:13,face:Math.PI/2,walkT:0,moving:false,flash:0,dead:false,wp:null,mute:false,follow:false,blood:false,petrified:false,lore:false,sqOnly:false,quest:0},o);this.area=ROOMS[o.room].area}
   update(dt,p){
     const dx=p.x-this.x,dy=p.y-this.y,d=Math.hypot(dx,dy);
+    if(this.duel)return;
     if(this.follow){this.moving=false;if(d>84){this.x+=dx/d*230*dt;this.y+=dy/d*230*dt;this.moving=true;this.walkT+=dt;bounds(this)}this.face=Math.atan2(dy,dx);return}
     if(d<170&&!this.petrified)this.face=Math.atan2(dy,dx);
   }
@@ -1807,6 +1829,7 @@ class NPC{
     const w=this.wp?{a:this.wp==='spear'?-Math.PI/2+.08:Math.PI/2-.4,ext:0}:null;
     fighter(this,this.pal,w,this.wp==='spear');
     if(this.petrified){ctx.strokeStyle='#a8a8a8';ctx.lineWidth=4;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(this.x-9,this.y-30);ctx.lineTo(this.x-17,this.y-50);ctx.moveTo(this.x+9,this.y-30);ctx.lineTo(this.x+17,this.y-50);ctx.stroke()}
+    if(this.gray){ctx.fillStyle='#ff3030';ctx.shadowColor='#f00';ctx.shadowBlur=6;ctx.fillRect(this.x-5,this.y-40,3,3);ctx.fillRect(this.x+2,this.y-40,3,3);ctx.shadowBlur=0}
     if(this.blood){ctx.fillStyle='rgba(150,10,16,.85)';ctx.fillRect(this.x-7,this.y-34,7,6);ctx.fillRect(this.x+1,this.y-26,8,5);ctx.fillRect(this.x-5,this.y-18,6,5);ctx.beginPath();ctx.arc(this.x+10,this.y-40,2.5,0,7);ctx.fill()}
     if(!this.mute){ctx.textAlign='center';ctx.font='600 11px Cinzel,Georgia,serif';ctx.fillStyle='#e8dcc0';ctx.shadowColor='#000';ctx.shadowBlur=4;ctx.fillText(this.name,this.x,this.y-68);ctx.shadowBlur=0}
   }
@@ -2140,6 +2163,10 @@ function drawThread(pts){
   ctx.strokeStyle='rgba(200,220,255,'+(.25+.25*k)+')';ctx.lineWidth=8;ctx.beginPath();pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke();
   ctx.strokeStyle='rgba(255,255,255,'+(.5+.3*k)+')';ctx.lineWidth=2.5;ctx.stroke();ctx.restore();
 }
+function drawCone(x,y,ang,r,col){ // semicírculo de visão: 180 graus à frente
+  ctx.fillStyle='rgba('+col+',.28)';ctx.strokeStyle='rgba('+col+',.6)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(x,y-14);ctx.arc(x,y-14,r,ang-Math.PI/2,ang+Math.PI/2);ctx.closePath();ctx.fill();ctx.stroke();
+}
 function drawSlow(zs){
   zs.forEach(([x,y,r])=>{const g=ctx.createRadialGradient(x,y,4,x,y,r);g.addColorStop(0,'rgba(40,20,60,.55)');g.addColorStop(1,'rgba(40,20,60,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();
     ctx.strokeStyle='rgba(180,170,200,.35)';ctx.lineWidth=2;for(let i=0;i<5;i++){const a=i*1.256+Game.t*.4;ctx.beginPath();ctx.moveTo(x+Math.cos(a)*r*.3,y+Math.sin(a)*r*.2);ctx.lineTo(x+Math.cos(a)*r*.8,y+Math.sin(a)*r*.5);ctx.stroke()}});
@@ -2264,7 +2291,7 @@ const QACC=[{n:'{n}',t:'Não vou descer. Vi Aroer queimar: meu pai, meu povo, tu
  qi('...'),qi('Sua voz tremeu, e ainda assim você não recuou. Poucos fazem isso.'),
  qi('Muito bem. Eu o ensino. Mas saiba: aqui, sua vida é minha até que eu diga o contrário.')];
 const QUI_DEF={room:'quiron',x:480,y:290,name:'Mestre Quíron',wp:'spear',pal:PAL_Q,lines:[''],
-  linesFn(){if(Game.mode==='sanct')return Game.qStage?QACC:QREF;const n=Game.trophies.length;return Game.mode==='sq'?[qi('As missões da região são suas para escolher. Quando estiver pronto, diga: entregamos os troféus.')]:n===0?[qi('Os guardiões esperam: o Templo Esquecido, as Ruínas Subterrâneas e o Labirinto. As portas atrás de mim levam a eles.'),qi('Cada guardião exige um item que só se conquista no caminho: o fio, a faixa e a oferenda. Eu não os entrego. Traga a cabeça, a corrente e os chifres.')]:[qi('Ainda faltam provas. Não volte de mãos vazias.')]},
+  linesFn(){if(Game.mode==='sanct')return Game.qStage?QACC:QREF;const n=Game.trophies.length;return Game.mode==='sq'?[qi('As missões da região são suas para escolher. Quando estiver pronto, diga: entregamos os troféus.')]:n===0?[qi('Os guardiões esperam: o Templo Esquecido, as Ruínas Subterrâneas e o Labirinto. As portas atrás de mim levam a eles.'),{n:'{n}',t:'Medusa, Cérbero, o Minotauro... eram nomes de histórias de ninar, para assustar criança. O senhor fala deles como quem fala de vizinhos.'},qi('Quem ainda ri das lendas nunca precisou atravessá-las. Vá, e deixe que a pedra, o bronze e o labirinto lhe ensinem o contrário.'),qi('Cada guardião exige um item que só se conquista no caminho: o fio, a faixa e a oferenda. Eu não os entrego. Traga a cabeça, a corrente e os chifres.')]:[qi('Ainda faltam provas. Não volte de mãos vazias.')]},
   onEnd(){if(Game.mode==='sq')Game.askReturn();else if(Game.mode==='sanct')Game.sanctNext()}};
 const BOSS_INTRO={medusa:'Medusa mantém uma Venda sobre os olhos. Quando a retira, o olhar petrifica quem estiver à frente. Vista a Venda (V) quando o cone vermelho surgir.',cerbero:'Das ruínas ecoa um uivo triplo: Cérbero, preso a uma corrente de aço, desperta. É rápido: esquive nas investidas.',minotauro:'No labirinto, o Minotauro raspa o chão. Se errar a investida e bater na parede, ficará atordoado.'};
 const TROPHY={templo:{name:'Cabeça de Medusa',line:'A Venda caiu, e o olhar dela morreu com ela. Sob a venda, um selo de cera: uma coroa dentro de um círculo.'},ruinas:{name:'Corrente de Cérbero',line:'A fera tombou. A corrente que a prendia é de aço trabalhado, e traz uma insígnia da Ordem da Nova Coroa.'},labirinto:{name:'Chifres do Minotauro',line:'O Minotauro cai. Parto os chifres como prova... e há um cravo de ferro profanado fincado em um deles: Magia Profanada.'}};
