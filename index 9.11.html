@@ -12,6 +12,7 @@ body{display:grid;place-items:center}
 #wrap{position:relative;width:min(100vw,160vh);aspect-ratio:8/5;container-type:inline-size;background:#000;box-shadow:0 0 60px #000}
 canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:default}
 #hud>*,#dlg,#hint{position:absolute}
+.arena #hint,.arena #skills,.arena #track,.arena #bonus,.arena #prompt{display:none!important}
 #vitals{left:2cqw;bottom:2cqw;width:26cqw}
 .who{font-size:1.4cqw;letter-spacing:.08em;color:#c8a15a;margin-bottom:.6cqw}
 .bar{position:relative;background:#0b0807;border:1px solid #6b5430;box-shadow:inset 0 0 6px #000}
@@ -603,7 +604,7 @@ const Game={
     if((m==='mission'||m==='return'||m==='sq'||m==='sanct')&&id==='quiron')return[this.quironN];
     let L=this.allNpcs.filter(n=>n.room===id);
     L=m==='sq'?L.filter(n=>n.sqOnly||(n.lore&&n.mute)):L.filter(n=>!n.sqOnly);
-    if(m==='village')L=L.concat(this.guards);
+    if(m==='village'&&this.guardsOn)L=L.concat(this.guards);
     if(m==='castle'&&this.guardCall&&this.guardN){const g=this.guardN,p=this.player;g.room=id;g.x=clamp(p.x+70,A.x1+20,A.x2-20);g.y=p.y;L=L.concat(g)}
     return L;
   },
@@ -619,7 +620,7 @@ const Game={
     this.boss=DUMMY;
     if(m==='escape'&&id==='gate')this.boss=this.lord;
     if(m==='train'||m==='test')this.boss=this.quiron;
-    if(m==='mission'&&R.boss){this.boss=this.mBoss(R.boss);Dlg.say([{n:'Narrador',t:BOSS_INTRO[R.boss]}],false)}
+    if(m==='mission'&&R.boss){this.boss=this.mBoss(R.boss)}
     this.haz=[];this.trail=[];this.pp=null;if(m!=='camp'){this.pend=[];this.tgt=[]}
     if(m==='camp')this.campSetup();
     this.noWeapon=!this.armed;
@@ -711,9 +712,10 @@ const Game={
       if(Math.random()<.25)parts.push(new Particle(480+rnd(-18,18),392,rnd(-8,8),rnd(-50,-20),.9,'#e8f4ff',2));
       if(Math.hypot(p.x-480,p.y-400)<30){this.armed=true;this.noWeapon=false;this.lord.mode='fight';this.lord.cd=1.2;SFX.clang();Dlg.say([art('Isso! Agora derrube-o, Alteza!')],false)}
     }
-    if(m==='village'){if(this.villageAlert)this.chaseTick(dt);else this.patrolTick(dt)}
+    if(m==='village'){if(this.vTimer!=null&&!this.guardsOn){this.vTimer-=dt;if(this.vTimer<=0)this.activateGuards()}if(this.guardsOn){if(this.villageAlert)this.chaseTick(dt);else this.patrolTick(dt)}}
     if(m==='helia')this.heliaTick(dt);
     if(m==='climb')this.climbTick(dt);
+    if(m==='golpe'){const p=this.player;if((ROOMS[this.room].doors||[]).some(d=>Math.abs(p.x-d.x)<46))p.y=Math.max(p.y,A.y1+62)}
     if(m==='mission')this.pathTick(dt);
     if(m==='camp'){this.tqTick(dt);if(this.crit.length)this.climbTick(dt)}
   },
@@ -732,7 +734,7 @@ const Game={
     }
     R.doors.forEach(d=>{
       if(d.side){const t=clamp((p.y-A.y1)/(A.y2-A.y1),0,1),xm=A.x2-A.inset*(1-t)-p.r;if(p.x>=xm-3&&p.y>d.y1&&p.y<d.y2)side=d}
-      else if(Math.abs(p.x-d.x)<(d.gate?60:44)&&p.y<A.y1+60)door=d;
+      else if(this.mode!=='golpe'&&Math.abs(p.x-d.x)<(d.gate?60:44)&&p.y<A.y1+60)door=d;
     });
     this.nearNpc=!!near;
     const pr=$('prompt');
@@ -754,7 +756,7 @@ const Game={
   },
   afterTalk(){
     if(this.mode==='castle'){if(this.allTalked()&&!this.nightTrig)Clock.t=Math.max(Clock.t,.57)}
-    else if(this.mode==='village'&&!this.villageAlert&&this.allNpcs.filter(x=>x.room==='vila').every(x=>x.talked))this.startChase();
+    else if(this.mode==='village'&&!this.guardsOn&&this.vTimer==null&&this.allNpcs.filter(x=>x.room==='vila').every(x=>x.talked))this.vTimer=5;
     else if(this.mode==='helia'&&!this.ascent&&this.allNpcs.filter(x=>x.surv&&x.name!=='Guarda Demétrio').every(x=>x.talked))toast('Volte a falar com o Guarda Demétrio (ESPAÇO)');
   },
   lightList(){
@@ -771,12 +773,12 @@ const Game={
     return L;
   },
   useDoor(d){
-    const p=this.player;if(busy)return;
+    const p=this.player;if(busy||this.mode==='golpe')return;
     const block=lines=>{p.y=A.y1+80;this.state='dialogue';$('prompt').style.display='none';Dlg.say(lines,true,()=>{this.state='explore'})};
     if(d.needs==='ascent'&&!this.ascent)return block([{n:'{n}',t:'Ainda há sobreviventes no templo. Preciso ouvir o que viram antes de partir.'}]);
     if(d.req&&!d.req())return block([{n:'{n}',t:d.deny}]);
     if(d.needs==='camp'&&this.mode!=='camp')return block([qi('Ainda não, aprendiz.')]);
-    if(d.needs==='alert'&&!this.villageAlert)return block([{n:'{n}',t:'Ainda não tenho razão para deixar a vila... e não sei para onde iria.'}]);
+    if(d.needs==='alert'&&!this.villageAlert&&!this.guardsOn)return block([{n:'{n}',t:'Ainda não tenho razão para deixar a vila... e não sei para onde iria.'}]);
     if(d.needs==='mission'&&this.mode!=='mission')return block([qi(this.mode==='sq'?'Esses guardiões já caíram.':'Ainda não, aprendiz.')]);
     if(d.needs==='sq'&&this.mode!=='sq')return block([this.mode==='helia'?{n:'{n}',t:'Eleutéria está em ruínas e as outras cidades estão fechadas. Preciso encontrar Quíron, nas montanhas, antes de qualquer coisa.'}:this.mode==='mission'?qi('As cidades podem esperar, aprendiz. Primeiro, os três guardiões.'):{n:'{n}',t:'Ainda não é hora de ir até lá.'}]);
     if(((this.mode==='sq'||this.mode==='mission')||(this.mode==='camp'&&this.boss instanceof Foe))&&this.boss&&this.boss!==DUMMY&&!this.boss.dead)return block([{n:'Narrador',t:'A saída está selada: não há como fugir da luta.'}]);
@@ -848,13 +850,13 @@ const Game={
   },
   // ----- vila e fuga sem armas -----
   initVillage(){
-    this.mode='village';this.young=false;this.boss=DUMMY;this.armed=false;this.villageAlert=false;this.armorBonus=0;
+    this.mode='village';this.young=false;this.boss=DUMMY;this.armed=false;this.villageAlert=false;this.guardsOn=false;this.vTimer=null;this.armorBonus=0;
     this.allNpcs=mkNpcs();this.guards=VPATH.map(w=>{const g=new NPC({...GUARD_DEF,x:w[0][0],y:w[0][1]});g.wi=1;g.ca=0;return g});
     this.rp();parts.length=0;this.hitstop=0;this.shake=0;
     Clock.t=.3;Clock.step(0,false);$('obj').classList.remove('on');
     this.setRoom('vila',480,470);this.syncStage();this.state='wait';
     Dlg.say([{n:'Narrador',t:'Anos depois, o príncipe vive sob outro nome, para se esconder dos perseguidores de Aroer. Ele escolhe agora o nome de disfarce...'}],true,()=>{
-      askName(()=>{this.state='dialogue';Dlg.say([{n:'Narrador',t:'Os anos passaram. Em uma vila humilde, longe de tudo, {n} vive como camponês, sem armas, escondendo quem realmente é.'},{n:'Narrador',t:'Por toda a região, soldados da Ordem da Nova Coroa invadem as vilas cobrando impostos abusivos e levando à força os jovens para o exército. Desta vila, todos os jovens já foram levados. Restaram só os mais velhos, que em segredo resistem ao regime.'},{n:'Narrador',t:'Dois guardas patrulham a vila. Fique fora dos cones vermelhos de visão deles.'}],true,()=>{this.state='explore'})});
+      askName(()=>{this.state='dialogue';Dlg.say([{n:'Narrador',t:'Os anos passaram. Em uma vila humilde, longe de tudo, {n} vive como camponês, sem armas, escondendo quem realmente é.'},{n:'Narrador',t:'Por toda a região, soldados da Ordem da Nova Coroa invadem as vilas cobrando impostos abusivos e levando à força os jovens para o exército. Desta vila, todos os jovens já foram levados. Restaram só os mais velhos, que em segredo resistem ao regime.'},{n:'Narrador',t:'Converse com todos os moradores da vila e fique atento: a Ordem costuma aparecer sem aviso.'}],true,()=>{this.state='explore'})});
     });
   },
   startChase(){
@@ -1050,7 +1052,7 @@ const Game={
       qi('Agora, o teste. Não é uma luta até a morte: quero ver sua postura e sua esquiva. E eu não vou me conter.')],true,()=>this.giveGear());
   },
   loreObjs(){
-    const R=ROOMS[this.room];this.loreSeen=this.loreSeen||{};if(!R)return[];
+    const R=ROOMS[this.room];this.loreSeen=this.loreSeen||{};if(!R||R.boss)return[];
     return((R.lore||[]).map((o,i)=>({...o,i,lore:1,kind:'stone',label:'Examinar inscrição'})).filter(o=>!this.loreSeen[this.room+o.i]))
       .concat((R.items||[]).filter(o=>!this.loreSeen[this.room+'i'+o.id]).map(o=>({...o,pi:o.id,kind:/^(mel|erva)/.test(o.id)?'erva':'stone'})));
   },
@@ -1067,6 +1069,7 @@ const Game={
       if(h.t>(h.k==='pool'?h.tele+3.5:h.tele+.35))hz.splice(i,1);
     }
   },
+  activateGuards(){this.guardsOn=true;this.npcs=this.npcs.concat(this.guards);SFX.door();toast('Soldados da Ordem entraram na vila! Fique fora dos cones vermelhos.')},
   duelTick(dt){ // Noite do Golpe: Artur trava um duelo com o comandante traidor enquanto o príncipe enfrenta o primeiro chefe
     const a=this.arturN,o=this.orderN;if(!a||!o)return;
     if(this.mode==='escape'&&this.room==='gate'){
@@ -1257,6 +1260,7 @@ const Game={
     setSlot('talk',this.nearNpc?0:.65,this.nearNpc);
     S.venda.style.display=this.venda?'flex':'none';setSlot('venda',cb?0:.65,this.blind);
     S.diario.style.display=(this.mode==='sq'||this.mode==='camp')?'flex':'none';setSlot('diario',0,Journal.on);
+    document.body.classList.toggle('arena',!!(this.mode==='mission'&&ROOMS[this.room]&&ROOMS[this.room].boss));
     S.pocao.style.display=['camp','test','mission','sq','return'].includes(this.mode)?'flex':'none';S.pocao.querySelector('small').textContent='Poção ×'+this.pots+'/'+this.potMax;setSlot('pocao',this.pots>0?0:.65,false);
     {const tr=$('trophies'),on=this.mode==='mission'||this.mode==='sq'||this.mode==='return';tr.style.display=on?'block':'none';
      if(on)tr.textContent=['Cabeça de Medusa','Corrente de Cérbero','Chifres do Minotauro'].map(t=>(this.trophies.includes(t)?'◆ ':'◇ ')+t).join('\n');
@@ -1274,7 +1278,7 @@ const Game={
     ctx.drawImage(tut?BGG:ROOM_BG[this.room],0,0);
     if(!R.outdoor)drawWindows(R);
     b.drawTele();
-    const list=tut?[]:BR.map(r=>({y:r.y,f:()=>drawBrazier(r)})).concat(this.props.map(q=>({y:q[2],f:()=>drawProp(q[0],q[1],q[2],q[4])})),this.npcs.map(n=>({y:n.y,f:()=>n.draw()})),(this.perks&&this.perks.fio&&ROOMS[this.room].trail&&this.trail&&this.trail.length>1?[{y:A.y1-4,f:()=>drawThread(this.trail)}]:[]),(this.mode==='village'&&!this.villageAlert?this.guards.map(g=>({y:g.y-2,f:()=>drawCone(g.x,g.y,g.ca||0,GVR,'230,50,50')})):[]),(ROOMS[this.room].grays?this.npcs.filter(n=>n.gray).map(g=>({y:A.y1-2,f:()=>drawCone(g.x,g.y,g.ca||0,125,'230,40,40')})):[]),(ROOMS[this.room].slow?[{y:A.y1-3,f:()=>drawSlow(ROOMS[this.room].slow)}]:[]),((this.boss instanceof Cerbero&&this.boss.sleepT>0)?[{y:this.boss.y+40,f:()=>{ctx.fillStyle='#cfe8ff';ctx.font='700 18px Cinzel,serif';ctx.textAlign='center';ctx.fillText('Z z',this.boss.x,this.boss.y-70)}}]:[]),(this.haz||[]).map(h=>({y:A.y1-5,f:()=>drawHaz(h)})),(this.crit||[]).map(c=>({y:c.y,f:()=>drawCrit(c)})),((this.mode==='camp'||this.mode==='mission')?(this.pend||[]).map(q=>({y:q.y+1,f:()=>drawPend(q)})).concat((this.tgt||[]).map(q=>({y:q.y,f:()=>drawTgt(q)}))):[]),(this.mode==='escape'&&this.room==='gate'&&!this.armed?[{y:400,f:drawSwordItem}]:[]),(((this.mode==='sq'?this.questObjs():this.mode==='camp'?this.tqObjs():this.mode==='mission'?this.loreObjs():[])).map(o=>({y:o.y,f:()=>drawQObj(o)}))));
+    const list=tut?[]:BR.map(r=>({y:r.y,f:()=>drawBrazier(r)})).concat(this.props.map(q=>({y:q[2],f:()=>drawProp(q[0],q[1],q[2],q[4])})),this.npcs.map(n=>({y:n.y,f:()=>n.draw()})),(this.perks&&this.perks.fio&&ROOMS[this.room].trail&&this.trail&&this.trail.length>1?[{y:A.y1-4,f:()=>drawThread(this.trail)}]:[]),(this.mode==='village'&&this.guardsOn&&!this.villageAlert?this.guards.map(g=>({y:g.y-2,f:()=>drawCone(g.x,g.y,g.ca||0,GVR,'230,50,50')})):[]),(ROOMS[this.room].grays?this.npcs.filter(n=>n.gray).map(g=>({y:A.y1-2,f:()=>drawCone(g.x,g.y,g.ca||0,125,'230,40,40')})):[]),(ROOMS[this.room].slow?[{y:A.y1-3,f:()=>drawSlow(ROOMS[this.room].slow)}]:[]),((this.boss instanceof Cerbero&&this.boss.sleepT>0)?[{y:this.boss.y+40,f:()=>{ctx.fillStyle='#cfe8ff';ctx.font='700 18px Cinzel,serif';ctx.textAlign='center';ctx.fillText('Z z',this.boss.x,this.boss.y-70)}}]:[]),(this.haz||[]).map(h=>({y:A.y1-5,f:()=>drawHaz(h)})),(this.crit||[]).map(c=>({y:c.y,f:()=>drawCrit(c)})),((this.mode==='camp'||this.mode==='mission')?(this.pend||[]).map(q=>({y:q.y+1,f:()=>drawPend(q)})).concat((this.tgt||[]).map(q=>({y:q.y,f:()=>drawTgt(q)}))):[]),(this.mode==='escape'&&this.room==='gate'&&!this.armed?[{y:400,f:drawSwordItem}]:[]),(((this.mode==='sq'?this.questObjs():this.mode==='camp'?this.tqObjs():this.mode==='mission'?this.loreObjs():[])).map(o=>({y:o.y,f:()=>drawQObj(o)}))));
     list.push({y:p.y,f:()=>drawPlayer(p)},{y:b.y,f:()=>drawBoss(b)});
     list.sort((u,v)=>u.y-v.y).forEach(o=>o.f());
     drawSlashes(p,b);
