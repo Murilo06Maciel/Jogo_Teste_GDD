@@ -1,6 +1,6 @@
 # Jogo_Teste_GDD
 
-Link:  https://murilo06maciel.github.io/Jogo_Teste_GDD/
+Link:  https://murilo06maciel.github.io/Jogo_Teste_GDD/index.html
 
 Caso não funcione, baixe o arquivo index.html e o execute em seu navegador.
 
