@@ -111,6 +111,39 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:def
 #jb .qi.act{border-color:#ffd98a}#jb .qi.done{opacity:.6;border-color:#4c7a47}
 #choice{z-index:10;background:rgba(0,0,0,.78)}
 #choice .panel{width:50cqw}
+
+/* ===== HUD LIMPA: visibilidade dinâmica (gameplay / combate) ===== */
+#hint{display:none!important}
+#clock{display:block!important;border-radius:.8cqw}
+#vitals,#skills,#berries,#track,#trophies,#who{display:none!important}
+body.hud-combat #vitals{display:block!important}
+body.hud-berries #berries{display:flex!important}
+body.hud-mission #track{display:block!important}
+#vitals{left:0!important;bottom:2cqw!important;width:26cqw!important}
+.bar{border-left:0;border-radius:0 1.2cqw 1.2cqw 0;overflow:hidden}
+.hp{height:2cqw!important}.hp i{background:linear-gradient(#8fe36a,#4a9a3a)!important}
+.hp span,.st span{position:absolute;inset:0;text-align:center;font:600 1cqw/2cqw 'Cinzel',Georgia,serif;letter-spacing:.12em;color:#0c2108;text-shadow:none}
+.st{height:1.6cqw!important;margin-top:.4cqw!important}.st i{background:linear-gradient(#7ff0f6,#2fb4c4)!important}
+.st span{line-height:1.6cqw;font-size:.85cqw;color:#06303a}
+#skills{left:50%!important;right:auto!important;transform:translateX(-50%);bottom:2cqw!important}
+#berries{right:0;bottom:2cqw;align-items:center;gap:1.1cqw;padding:.7cqw 1.8cqw .7cqw .9cqw;background:rgba(70,70,76,.9);border:1px solid #8a6d3b;border-right:0;border-radius:3cqw 0 0 3cqw;font:700 1.7cqw 'Cinzel',Georgia,serif;color:#f3e2b3}
+#berries .bi{width:3.6cqw;height:3.6cqw;border-radius:50%;background:#cfd4dc;display:grid;place-items:center;box-shadow:inset 0 0 6px #0006}
+#berries .bi svg{width:2.6cqw;height:2.6cqw}
+#track{left:2cqw!important;top:2cqw!important;width:26cqw;max-width:none!important;padding:1cqw 1.4cqw 1.1cqw;background:#000d;border:1px solid #6b5430;border-radius:1.4cqw;white-space:pre-line}
+#track::before{content:'MISSÃO';display:block;font:600 .95cqw 'Cinzel',Georgia,serif;letter-spacing:.2em;color:#c8a15a;margin-bottom:.4cqw}
+#obj{top:2cqw!important}
+/* ===== PAUSA / CONFIGURAÇÕES ===== */
+#pause .panel{position:relative}
+#pause nav button{width:34cqw}
+#pClose{position:absolute!important;top:.9cqw;right:.9cqw;width:2.8cqw!important;min-width:0!important;height:2.8cqw;margin:0!important;padding:0!important;font-size:1.3cqw!important}
+#pClose::before,#pClose::after{content:none!important}
+#settings{z-index:8;background:rgba(0,0,0,.72)}
+#settings .panel{width:50cqw;text-align:left}
+#settings h4{margin:1.2cqw 0 .3cqw;font:700 1.3cqw 'Cinzel',Georgia,serif;letter-spacing:.16em;color:#c8a15a;text-transform:uppercase}
+.cfg{display:grid;grid-template-columns:1fr auto;align-items:center;gap:1.4cqw;margin:.6cqw 0;font:1.5cqw 'EB Garamond',Georgia,serif}
+.cfg input[type=range]{width:20cqw;accent-color:#c8a15a}
+.cfg input[type=checkbox]{width:1.8cqw;height:1.8cqw;accent-color:#c8a15a}
+#settings .panel>button{display:block;margin:1.4cqw auto 0}
 </style>
 </head>
 <body>
@@ -120,7 +153,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:def
     <div id="vitals">
       <div class="who" id="who">Príncipe de Aroer</div>
       <div class="bar hp"><i id="hp"></i><span id="hpt"></span></div>
-      <div class="bar st"><i id="st"></i></div>
+      <div class="bar st"><i id="st"></i><span>ENERGIA</span></div>
       <div id="bonus"></div>
     </div>
     <div id="skills">
@@ -131,12 +164,12 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:def
       <div class="sk" id="s-save"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6"/></svg><b>P</b><small>Salvar jogo</small><u></u></div>
       <div class="sk" id="s-talk"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H10l-4 4v-4H4z"/></svg><b>SPACE</b><small>Conversar / avançar</small><u></u></div>
       <div class="sk" id="s-venda" style="display:none"><svg viewBox="0 0 24 24"><path d="M3 12s4-6 9-6 9 6 9 6-4 6-9 6-9-6-9-6zM4 20L20 4"/></svg><b>V</b><small>Venda</small><u></u></div>
-      <div class="sk" id="s-pocao" style="display:none"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v5l-5 9a3 3 0 0 0 3 4h8a3 3 0 0 0 3-4l-5-9V3"/></svg><b>Q</b><small>Poção</small><u></u></div>
       <div class="sk" id="s-diario" style="display:none"><svg viewBox="0 0 24 24"><path d="M5 4h12a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2zM9 4v16"/></svg><b>J</b><small>Diário</small><u></u></div>
     </div>
     <div id="trophies"></div>
     <div id="track"></div>
     <div id="clock"></div>
+    <div id="berries"><span class="bi"><svg viewBox="0 0 32 32"><circle cx="11" cy="21" r="6" fill="#c2203a"/><circle cx="21" cy="20" r="6" fill="#a8142e"/><circle cx="16" cy="12" r="6" fill="#d9304c"/><path d="M16 6c0-3 2-4 5-4-1 3-2 4-5 4z" fill="#3f8f34"/><circle cx="14" cy="10" r="1.6" fill="#ffd0d6"/></svg></span><b id="bn">0</b></div>
   </div>
   <div id="hint">WASD move e define a direção · Espaço conversa e avança o diálogo (esquiva em combate) · Botão esquerdo golpe · Botão direito guarda · SHIFT (esq. ou dir.) golpe pesado · P salva · V venda · J diário · Esc pausa</div>
   <div id="dlg"><div id="dn"></div><div id="dt"></div><div id="dh">Espaço ▸</div></div>
@@ -153,7 +186,18 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:def
     <div id="mfoot">Protótipo jogável · O Castelo de Aroer</div>
   </div>
   <div id="modal" class="scr"><div class="panel"><h3 id="mT"></h3><div id="mB"></div><button id="mClose">Fechar</button></div></div>
-  <div id="pause" class="scr"><div class="panel"><h3>Pausado</h3><nav><button id="bRes">Continuar</button><button id="bMenu">Voltar ao Menu Principal</button></nav></div></div>
+  <div id="pause" class="scr"><div class="panel"><button id="pClose" aria-label="Fechar" title="Fechar (Enter)">✕</button><h3>Jogo Pausado</h3><nav><button id="bCfg">Configurações</button><button id="bSave">Salvar</button><button id="bMenu">Sair</button></nav></div></div>
+  <div id="settings" class="scr"><div class="panel"><h3>Configurações</h3>
+    <h4>Áudio</h4>
+    <div class="cfg"><label for="cfgVol">Volume geral <span id="cfgVolT"></span></label><input id="cfgVol" type="range" min="0" max="100" step="5"></div>
+    <div class="cfg"><label for="cfgMute">Silenciar tudo</label><input id="cfgMute" type="checkbox"></div>
+    <h4>Gráficos</h4>
+    <div class="cfg"><label for="cfgShake">Tremor de tela</label><input id="cfgShake" type="checkbox"></div>
+    <div class="cfg"><label for="cfgParts">Partículas (fumaça, brasas, impactos)</label><input id="cfgParts" type="checkbox"></div>
+    <div class="cfg"><label>Tela cheia</label><button id="cfgFull" style="margin:0;width:16cqw;min-width:0;padding:.6cqw 1cqw;font-size:1.1cqw">Alternar</button></div>
+    <h4>Controles</h4>
+    <div class="cfg"><label>Lista de teclas e mouse</label><button id="cfgCtl" style="margin:0;width:16cqw;min-width:0;padding:.6cqw 1cqw;font-size:1.1cqw">Ver controles</button></div>
+    <button id="stClose">Voltar</button></div></div>
   <div id="cut" class="scr">
     <div id="cbox"><div id="cpage"></div><div id="ct"></div><div id="cn">▸</div></div>
     <button id="bSkip">Pular Cutscene</button>
@@ -194,6 +238,7 @@ const Input={
       if(e.target&&e.target.tagName==='INPUT')return;
       const k=e.key.toLowerCase();
       if(e.code==='ShiftLeft'||e.code==='ShiftRight'){this.keys.lshift=true;if(!e.repeat)this.pressed.lshift=true}
+      if(k==='enter'&&(gstate===GS.PAUSED||PLAY.includes(gstate))&&!$('choice').classList.contains('on')&&!$('name').classList.contains('on'))e.preventDefault();
       if(k===' '){e.preventDefault();const ae=document.activeElement;if(ae&&ae.tagName==='BUTTON')ae.blur()}
       if(!e.repeat)this.pressed[k]=true;
       this.keys[k]=true;
@@ -558,7 +603,7 @@ function drawBossBars(b){
 }
 
 /* ============ JOGO ============ */
-const S={};['lmb','rmb','shift','dash','save','talk','venda','pocao','diario'].forEach(k=>S[k]=$('s-'+k));
+const S={};['lmb','rmb','shift','dash','save','talk','venda','diario'].forEach(k=>S[k]=$('s-'+k));
 const setSlot=(k,c,on)=>{S[k].style.setProperty('--c',c);S[k].classList.toggle('on',!!on)};
 
 const Game={
@@ -572,7 +617,7 @@ const Game={
   rp(){const p=this.player;p.reset();p.maxHp=100+this.armorBonus;p.hp=p.maxHp},
   initCastle(){
     this.mode='castle';this.duel=false;this.young=true;this.boss=DUMMY;this.armed=true;this.nightTrig=false;this.guardCall=false;this.guardN=null;this.visitedOut=false;this.playerName='';
-    this.armorBonus=0;this.trophies=[];this.venda=false;this.blind=false;this.quests={};this.track=0;this.guards=[];this.heliaAttack=false;this.villageAlert=false;this.warrior=false;this.wooden=false;this.ascent=false;this.qStage=0;this.sanctIntro=false;this.crit=[];this.pots=0;this.potMax=3;this.tq={};this.pend=[];this.tgt=[];this.campNpcs=[];this.tqTr=0;this.afin={rac:0,trad:0,sob:0};this.loreSeen={};this.haz=[];this.bq={me:0,cn:0,ec:0,cm:0};this.honey=0;this.cakes=0;
+    this.armorBonus=0;this.trophies=[];this.venda=false;this.blind=false;this.quests={};this.track=0;this.guards=[];this.heliaAttack=false;this.villageAlert=false;this.warrior=false;this.wooden=false;this.ascent=false;this.qStage=0;this.sanctIntro=false;this.crit=[];this.pots=0;this.potMax=3;this.berriesOn=false;this.tq={};this.pend=[];this.tgt=[];this.campNpcs=[];this.tqTr=0;this.afin={rac:0,trad:0,sob:0};this.loreSeen={};this.haz=[];this.bq={me:0,cn:0,ec:0,cm:0};this.honey=0;this.cakes=0;
     this.allNpcs=mkNpcs();
     this.king=new NPC(KING_DEF);this.arturN=new NPC(ARTUR_ESC);this.orderN=new NPC({room:'gate',x:235,y:330,name:'Comandante Traidor',mute:true,wp:'spear',pal:PAL_L,lines:['']});this.quironN=new NPC(QUI_DEF);this.lord=this.lord||new OrderLord();
     this.player.reset();this.hitstop=0;this.shake=0;this.endT=0;this.msgT=0;this.result='';
@@ -580,13 +625,13 @@ const Game={
     this.setRoom('garden',480,450);this.state='explore';
   },
   // ----- salvamento -----
-  snapshot(){return{v:2,mode:this.mode,room:this.room,x:this.player.x,y:this.player.y,t:Clock.t,dmg:this.dmgBonus,arm:this.armorBonus,name:this.playerName,tro:this.trophies,venda:this.venda,q:this.quests,pk:this.perks,nt:this.nightTrig,track:this.track,young:this.young,armed:this.armed,asc:this.ascent,af:this.afin,bq:this.bq,ck:this.cakes,hn:this.honey,tq:this.tq,pots:this.pots,pm:this.potMax,
+  snapshot(){return{v:2,mode:this.mode,room:this.room,x:this.player.x,y:this.player.y,t:Clock.t,dmg:this.dmgBonus,arm:this.armorBonus,name:this.playerName,tro:this.trophies,venda:this.venda,q:this.quests,pk:this.perks,nt:this.nightTrig,track:this.track,young:this.young,armed:this.armed,asc:this.ascent,af:this.afin,bq:this.bq,ck:this.cakes,hn:this.honey,tq:this.tq,pots:this.pots,bo:this.berriesOn,pm:this.potMax,
     talked:this.allNpcs.filter(n=>n.talked).map(n=>n.name),hs:this.allNpcs.filter(n=>n.petrified||n.dead).map(n=>[n.name,n.dead?2:1])}},
   saveable(){return this.state==='explore'&&['castle','village','forest','helia','mission','sq','camp'].includes(this.mode)&&!(this.mode==='village'&&this.villageAlert)&&!(this.mode==='helia'&&this.heliaAttack)&&!(this.boss&&this.boss!==DUMMY&&!this.boss.dead)},
   manualSave(){if(this.saveable()&&Save.write()){toast('Jogo Salvo!');this.saveFlash=1}else toast('Não é possível salvar agora')},
   restore(d){
     this.initCastle();
-    Object.assign(this,{dmgBonus:d.dmg||0,armorBonus:d.arm||0,playerName:d.name||'',trophies:d.tro||[],venda:!!d.venda,quests:d.q||{},perks:d.pk||{},nightTrig:!!d.nt,track:d.track||0,young:d.young!==false,armed:d.armed!==false,ascent:!!d.asc,warrior:(d.arm||0)>0,afin:d.af||{rac:0,trad:0,sob:0},bq:Object.assign({me:0,cn:0,ec:0,cm:0},d.bq),cakes:d.ck||0,honey:d.hn||0,tq:d.tq||{},pots:d.pots||0,potMax:d.pm||3,wooden:d.mode==='camp'});
+    Object.assign(this,{dmgBonus:d.dmg||0,armorBonus:d.arm||0,playerName:d.name||'',trophies:d.tro||[],venda:!!d.venda,quests:d.q||{},perks:d.pk||{},nightTrig:!!d.nt,track:d.track||0,young:d.young!==false,armed:d.armed!==false,ascent:!!d.asc,warrior:(d.arm||0)>0,afin:d.af||{rac:0,trad:0,sob:0},bq:Object.assign({me:0,cn:0,ec:0,cm:0},d.bq),cakes:d.ck||0,honey:d.hn||0,tq:d.tq||{},pots:d.pots||0,berriesOn:!!d.bo||(d.pots>0),potMax:d.pm||3,wooden:d.mode==='camp'});
     (d.talked||[]).forEach(nm=>{const n=this.allNpcs.find(x=>x.name===nm);if(n)n.talked=true});
     (d.hs||[]).forEach(([nm,k])=>{const n=this.allNpcs.find(x=>x.name===nm);if(n){n.mute=true;if(k===2)n.dead=true;else{n.petrified=true;n.pal=PAL_STONE}}});
     this.mode=d.mode||'castle';this.visitedOut=true;if(this.mode==='camp')this.mkCamp();
@@ -935,7 +980,7 @@ const Game={
       this.mode='camp';this.armed=true;this.noWeapon=false;this.wooden=true;this.warrior=false;this.armorBonus=0;this.blind=false;
       this.pots=Math.max(this.pots,1);this.mkCamp();$('obj').classList.remove('on');this.rp();
       this.setRoom('quiron',480,470);this.campArrive=false;this.syncStage();this.state='explore';
-      toast('Entre no Portal do Treino (ESPAÇO) para começar os exercícios. J: diário, Q: poção');
+      toast('Entre no Portal do Treino (ESPAÇO) para começar os exercícios. J: diário, Q: berries');
     });
   },
   tqs(id){return this.tq[id]||(this.tq[id]={s:'none',k:0,got:[]})},
@@ -1142,8 +1187,8 @@ const Game={
   },
   usePotion(){
     const p=this.player;
-    if(this.pots>0&&p.hp<p.maxHp&&!p.dead&&['explore','fight'].includes(this.state)){this.pots--;p.hp=Math.min(p.maxHp,p.hp+45);toast('Poção usada: +45 de vida');burst(p.x,p.y-24,'#6adf7a',14,160,.6,3)}
-    else if(this.pots<=0)toast('Sem poções');
+    if(this.pots>0&&p.hp<p.maxHp&&!p.dead&&['explore','fight'].includes(this.state)){this.pots--;p.hp=Math.min(p.maxHp,p.hp+45);toast('Berrie comida: +45 de vida');burst(p.x,p.y-24,'#6adf7a',14,160,.6,3)}
+    else if(this.pots<=0)toast('Você não tem berries');
   },
   // ----- Quíron: treinamento, teste, três bosses, missões secundárias, retorno -----
   initTrain(){
@@ -1249,7 +1294,7 @@ const Game={
       if(this.endT<=0){const w=this.state==='win';this.state='wait';if(w)this.afterBoss();else transition(()=>this.retry())}
     }
     // HUD
-    $('hp').style.width=p.hp/p.maxHp*100+'%';$('hpt').textContent=Math.ceil(p.hp)+' / '+p.maxHp;
+    $('hp').style.width=p.hp/p.maxHp*100+'%';$('hpt').textContent='VIDA  '+Math.ceil(p.hp)+' / '+p.maxHp;
     $('st').style.width=p.st/p.maxSt*100+'%';$('clock').textContent=Clock.label();$('bonus').textContent=[this.dmgBonus?'Treino com Artur: +'+this.dmgBonus+' de dano':'',...this.perkList()].join(' · ');
     const cb=this.combat,ca=cb&&this.armed;this.saveFlash=Math.max(0,(this.saveFlash||0)-dt);
     setSlot('lmb',ca?(p.st<6?1:0):.65,p.atk&&p.atk.type==='light');
@@ -1261,16 +1306,23 @@ const Game={
     S.venda.style.display=this.venda?'flex':'none';setSlot('venda',cb?0:.65,this.blind);
     S.diario.style.display=(this.mode==='sq'||this.mode==='camp')?'flex':'none';setSlot('diario',0,Journal.on);
     document.body.classList.toggle('arena',!!(this.mode==='mission'&&ROOMS[this.room]&&ROOMS[this.room].boss));
-    S.pocao.style.display=['camp','test','mission','sq','return'].includes(this.mode)?'flex':'none';S.pocao.querySelector('small').textContent='Poção ×'+this.pots+'/'+this.potMax;setSlot('pocao',this.pots>0?0:.65,false);
-    {const tr=$('trophies'),on=this.mode==='mission'||this.mode==='sq'||this.mode==='return';tr.style.display=on?'block':'none';
-     if(on)tr.textContent=['Cabeça de Medusa','Corrente de Cérbero','Chifres do Minotauro'].map(t=>(this.trophies.includes(t)?'◆ ':'◇ ')+t).join('\n');
-     $('track').textContent=this.mode==='sq'?(this.trackText()||'Cidades abertas: Oros, Thalassa e a Periferia. Fale com as pessoas (J: diário). Quíron encerra a jornada'):
+    if(this.pots>0)this.berriesOn=true; // o contador só surge depois da 1ª berrie recebida
+    $('bn').textContent=Math.max(0,this.pots|0);
+    {let tx=(()=>{return this.mode==='sq'?this.trackText():
        this.mode==='camp'?this.tqText():(this.mode==='castle'&&this.guardCall)?'Objetivo: fale com o Guarda Real (ESPAÇO)':(this.mode==='helia'&&this.heliaIntro)?(this.ascent?'Objetivo: suba a trilha ao norte até Quíron':'Objetivo: procure sobreviventes no templo ('+this.allNpcs.filter(n=>n.surv&&n.talked).length+'/3)'):this.mode==='climb'?'Objetivo: suba a montanha. Evite os abismos e as criaturas (Espaço = esquiva)':this.mode==='sanct'?'Objetivo: fale com Quíron (ESPAÇO)':
-       (this.mode==='mission'&&this.trophies.length<3)?'Objetivo: vença os 3 guardiões ('+this.trophies.length+'/3). As outras cidades abrem depois disso':this.mode==='train'?'Objetivo: aprenda com Quíron':''}
+       (this.mode==='mission'&&this.trophies.length<3)?'Objetivo: vença os 3 guardiões ('+this.trophies.length+'/3). As outras cidades abrem depois disso':this.mode==='train'?'Objetivo: aprenda com Quíron':''})();
+     if(tx&&(this.mode==='mission'||this.mode==='sq'||this.mode==='return'))tx+='\n'+['Cabeça de Medusa','Corrente de Cérbero','Chifres do Minotauro'].map(t=>(this.trophies.includes(t)?'◆ ':'◇ ')+t).join('\n');
+     const tk=$('track');if(tk.textContent!==tx)tk.textContent=tx;
+     const bs=!!(this.boss&&this.boss!==DUMMY&&!this.boss.dead);
+     const hc=!!(cb||bs||this.mode==='climb'||this.mode==='tutorial'||this.mode==='train');
+     document.body.classList.toggle('hud-combat',hc);
+     document.body.classList.toggle('hud-berries',hc&&!!this.berriesOn);
+     document.body.classList.toggle('hud-mission',!!tx);
+    }
   },
   render(){
     if(this.mode==='scene'){Scene.render();return}
-    const p=this.player,b=this.boss,s=this.shake;
+    const p=this.player,b=this.boss,s=Cfg.shake?this.shake:0;
     ctx.save();ctx.clearRect(0,0,W,H);
     ctx.translate(rnd(-s,s),rnd(-s,s));
     const tut=this.mode==='tutorial',R=ROOMS[this.room];
@@ -1283,7 +1335,7 @@ const Game={
     list.sort((u,v)=>u.y-v.y).forEach(o=>o.f());
     drawSlashes(p,b);
     R.doors.forEach(d=>{if(!d.portal)return;const k=.6+.4*Math.sin(this.t*3+d.x),cx=d.x,cy=A.y1-30;ctx.globalCompositeOperation='lighter';const g=ctx.createRadialGradient(cx,cy,2,cx,cy,70);g.addColorStop(0,'rgba('+d.pc+','+(.55*k)+')');g.addColorStop(1,'rgba('+d.pc+',0)');ctx.fillStyle=g;ctx.fillRect(cx-70,cy-70,140,140);ctx.globalCompositeOperation='source-over'});
-    parts.forEach(pt=>pt.draw(ctx));
+    if(Cfg.parts)parts.forEach(pt=>pt.draw(ctx));
     R.outdoor?gardenLight(p,this.lightList()):lighting(p,this.fireLights());
     if(this.mode==='escape'){ctx.fillStyle='rgba(120,30,10,.26)';ctx.fillRect(0,0,W,H)}
     if(R.shade){ctx.fillStyle=`rgba(4,14,8,${R.shade})`;ctx.fillRect(0,0,W,H)}
@@ -2035,10 +2087,13 @@ const Save={
   write(){try{localStorage.setItem(this.key,JSON.stringify(Game.snapshot()));return true}catch(e){return false}},
   read(){try{return JSON.parse(localStorage.getItem(this.key))}catch(e){return null}}
 };
+const Cfg=(()=>{const c={vol:.8,mute:false,shake:true,parts:true};try{Object.assign(c,JSON.parse(localStorage.getItem('aroer_cfg')||'{}'))}catch(e){}return c})();
+function saveCfg(){try{localStorage.setItem('aroer_cfg',JSON.stringify(Cfg))}catch(e){}}
 const SFX={
   c:null,
+  out(){if(!this.master){this.master=this.c.createGain();this.master.connect(this.c.destination)}this.master.gain.value=Cfg.mute?0:Cfg.vol;return this.master},
   init(){try{if(!this.c)this.c=new (window.AudioContext||window.webkitAudioContext)();if(this.c.state==='suspended')this.c.resume()}catch(e){}},
-  env(dur,vol){const c=this.c,g=c.createGain();g.gain.setValueAtTime(vol,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+dur);g.connect(c.destination);return g},
+  env(dur,vol){const c=this.c,g=c.createGain();g.gain.setValueAtTime(vol,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+dur);g.connect(this.out());return g},
   noise(dur,freq,vol){if(!this.c)return;const c=this.c,b=c.createBuffer(1,c.sampleRate*dur,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;const n=c.createBufferSource();n.buffer=b;const f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=freq;n.connect(f);f.connect(this.env(dur,vol));n.start()},
   tone(type,f0,f1,dur,vol){if(!this.c)return;const c=this.c,o=c.createOscillator();o.type=type;o.frequency.setValueAtTime(f0,c.currentTime);o.frequency.exponentialRampToValueAtTime(f1,c.currentTime+dur);o.connect(this.env(dur,vol));o.start();o.stop(c.currentTime+dur)},
   door(){this.noise(.5,260,.9);this.tone('sine',90,40,.4,.8)},
@@ -2524,25 +2579,32 @@ function toCastle(){ // TUTORIAL -> EXPLORACAO_CASTELO
 }
 function menuMid(){
   Dlg.cb=null;Dlg.on=false;$('dlg').classList.remove('on');$('obj').classList.remove('on');$('prompt').style.display='none';
-  show('pause',false);show('cut',false);show('menu',true);wrap.classList.remove('cut');wrap.classList.add('inmenu');gstate=GS.MENU;Scene.stop();$('bLoad').disabled=!Save.has();
+  show('pause',false);show('settings',false);show('cut',false);show('menu',true);wrap.classList.remove('cut');wrap.classList.add('inmenu');gstate=GS.MENU;Scene.stop();$('bLoad').disabled=!Save.has();
 }
 function toMenu(){transition(menuMid)}
-function pauseGame(){prevG=gstate;gstate=GS.PAUSED;Input.keys={};show('pause',true)}
-function resumeGame(){show('pause',false);gstate=prevG;last=performance.now()}
+function pauseGame(){prevG=gstate;gstate=GS.PAUSED;Input.keys={};show('settings',false);show('pause',true)} // equivale a Time.timeScale = 0: nada é atualizado
+function resumeGame(){show('pause',false);show('settings',false);show('modal',false);gstate=prevG;last=performance.now();Input.keys={}}
+function pauseFree(){return !busy&&!$('name').classList.contains('on')&&!$('choice').classList.contains('on')&&!$('modal').classList.contains('on')&&!Journal.on}
+function openSettings(){
+  $('cfgVol').value=Math.round(Cfg.vol*100);$('cfgVolT').textContent=Math.round(Cfg.vol*100)+'%';
+  $('cfgMute').checked=Cfg.mute;$('cfgShake').checked=Cfg.shake;$('cfgParts').checked=Cfg.parts;
+  show('pause',false);show('settings',true);
+}
+function closeSettings(){show('settings',false);if(gstate===GS.PAUSED)show('pause',true)}
 
 const CONTROLS=[
   ['W A S D','Movimento ágil em 8 direções (também define para onde o personagem olha)'],
   ['Botão Esquerdo','Ataque leve com a espada, na direção do personagem'],
   ['Botão Direito','Defesa / Bloqueio, na direção do personagem (segure; no instante do golpe, apara)'],
   ['SHIFT esq. ou dir.','Ataque pesado: mais lento, maior alcance e dano elevado'],
-  ['Q','Usar poção de cura (disponível a partir do treino com Quíron)'],
+  ['Q','Comer uma berrie de cura (o contador surge no combate depois que você recebe as primeiras)'],
   ['F','Arremessar Bolo de Mel soporífero (luta contra Cérbero)'],
   ['Espaço','Perto de um NPC ou portal: conversa, avança as falas e entra no portal. Em combate: esquiva / dash (i-frames)'],
   ['P','Salvamento manual (aparece "Jogo Salvo!")'],
   ['V','Vestir / tirar a Venda (depois que Quíron a entrega)'],
   ['J','Diário de missões (nas missões secundárias da Região Helíaca)'],
   ['T','Avança o relógio do mundo (para ver o ciclo dia e noite)'],
-  ['Esc','Pausa durante a partida'],
+  ['Enter','Pausa e retoma a partida (Configurações, Salvar, Sair)'],
   ['R','Reinicia o tutorial']
 ];
 function openModal(kind){
@@ -2565,7 +2627,16 @@ $('bLoad').addEventListener('click',loadGameUI);
 $('jClose').addEventListener('click',()=>Journal.close());
 $('mClose').addEventListener('click',()=>show('modal',false));
 $('modal').addEventListener('mousedown',e=>{if(e.target.id==='modal')show('modal',false)});
-$('bRes').addEventListener('click',resumeGame);
+$('pClose').addEventListener('click',resumeGame);
+$('bCfg').addEventListener('click',openSettings);
+$('bSave').addEventListener('click',()=>Game.manualSave());
+$('stClose').addEventListener('click',closeSettings);
+$('cfgVol').addEventListener('input',e=>{Cfg.vol=e.target.value/100;$('cfgVolT').textContent=e.target.value+'%';saveCfg()});
+$('cfgMute').addEventListener('change',e=>{Cfg.mute=e.target.checked;saveCfg()});
+$('cfgShake').addEventListener('change',e=>{Cfg.shake=e.target.checked;saveCfg()});
+$('cfgParts').addEventListener('change',e=>{Cfg.parts=e.target.checked;saveCfg()});
+$('cfgFull').addEventListener('click',()=>{try{document.fullscreenElement?document.exitFullscreen():wrap.requestFullscreen()}catch(e){}});
+$('cfgCtl').addEventListener('click',()=>openModal('ctl'));
 $('bMenu').addEventListener('click',toMenu);
 $('pause').addEventListener('contextmenu',e=>e.preventDefault());
 $('bSkip').addEventListener('click',()=>{if(gstate===GS.CUTSCENE)toTutorial()});
@@ -2577,11 +2648,16 @@ BGG=buildBGG();Object.keys(ROOMS).forEach(k=>{ROOM_BG[k]=ROOMS[k].outdoor?buildO
 Menu.init();$('bLoad').disabled=!Save.has();
 function frame(now){
   const dt=Math.min(.033,(now-last)/1000);last=now;
+  if(Input.hit('enter')){ // ENTER: pausa e retoma
+    if(gstate===GS.PAUSED&&!busy)resumeGame();
+    else if(PLAY.includes(gstate)&&pauseFree())pauseGame();
+  }
   if(Input.hit('escape')){
     if($('modal').classList.contains('on'))show('modal',false);
+    else if($('settings').classList.contains('on'))closeSettings();
     else if(Journal.on)Journal.close();
-    else if(PLAY.includes(gstate)&&!busy&&!$('name').classList.contains('on')&&!$('choice').classList.contains('on'))pauseGame();
     else if(gstate===GS.PAUSED)resumeGame();
+    else if(PLAY.includes(gstate)&&pauseFree())pauseGame();
   }
   if(gstate===GS.CUTSCENE&&!busy&&Input.hit('enter',' ','e'))Cut.advance();
   if(gstate===GS.MENU){Menu.update(dt);Menu.draw()}
